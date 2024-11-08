@@ -12,6 +12,7 @@ function fiber_photometry_behavior_analysis()
     % Clear workspace and close all figures
     close all;
     clearvars;
+    warning off;
     
     %% 1. Import Data
     
@@ -114,33 +115,59 @@ function fiber_photometry_behavior_analysis()
     excelFullPath = fullfile(excelPath, excelFileName);
     fprintf('Loading Behavior Tags from: %s\n', excelFullPath);
     
-    % Read sheets from Excel file
+    % Read available sheets from Excel file
     try
-        % Assuming sheets are named 'Behavior1' and 'Behavior2'
-        behavior1Data = readtable(excelFullPath, 'Sheet', 'Behavior1');
-        behavior2Data = readtable(excelFullPath, 'Sheet', 'Behavior2');
+        [~, sheets] = xlsfinfo(excelFullPath);
+        if isempty(sheets)
+            error('No sheets found in the Excel file.');
+        end
     catch ME
-        error('Failed to read Behavior Tags Excel file: %s', ME.message);
+        error('Failed to read Excel file: %s', ME.message);
     end
     
-    % Extract behavior onset times
-    if ismember('Behavior1_Onset_Time_s', behavior1Data.Properties.VariableNames)
-        behavior1Times = behavior1Data.Behavior1_Onset_Time_s;
+    % Initialize behavior times
+    behavior1Times = [];
+    behavior2Times = [];
+    
+    % Read Behavior1 sheet if it exists
+    if ismember('Behavior1', sheets)
+        try
+            behavior1Data = readtable(excelFullPath, 'Sheet', 'Behavior1');
+            if ismember('Behavior1_Onset_Time_s', behavior1Data.Properties.VariableNames)
+                behavior1Times = behavior1Data.Behavior1_Onset_Time_s;
+                fprintf('Loaded %d Behavior1 tags.\n', length(behavior1Times));
+            else
+                warning('Sheet "Behavior1" does not contain the column "Behavior1_Onset_Time_s".');
+            end
+        catch ME
+            warning('Failed to read "Behavior1" sheet: %s', ME.message);
+        end
     else
-        error('Sheet "Behavior1" does not contain the column "Behavior1_Onset_Time_s".');
+        warning('Sheet "Behavior1" not found in the Excel file.');
     end
     
-    if ismember('Behavior2_Onset_Time_s', behavior2Data.Properties.VariableNames)
-        behavior2Times = behavior2Data.Behavior2_Onset_Time_s;
+    % Read Behavior2 sheet if it exists
+    if ismember('Behavior2', sheets)
+        try
+            behavior2Data = readtable(excelFullPath, 'Sheet', 'Behavior2');
+            if ismember('Behavior2_Onset_Time_s', behavior2Data.Properties.VariableNames)
+                behavior2Times = behavior2Data.Behavior2_Onset_Time_s;
+                fprintf('Loaded %d Behavior2 tags.\n', length(behavior2Times));
+            else
+                warning('Sheet "Behavior2" does not contain the column "Behavior2_Onset_Time_s".');
+            end
+        catch ME
+            warning('Failed to read "Behavior2" sheet: %s', ME.message);
+        end
     else
-        error('Sheet "Behavior2" does not contain the column "Behavior2_Onset_Time_s".');
+        warning('Sheet "Behavior2" not found in the Excel file.');
     end
 
     %% 4. Define Analysis Parameters
     
     % Define time window around behavior onset
-    preTime = -30;  % seconds before tag
-    postTime = 30; % seconds after tag
+    preTime = -50;  % seconds before tag
+    postTime = 300; % seconds after tag
     windowDuration = postTime - preTime; % total window duration
     
     %% 5. Analyze and Visualize Behavior1 Tags
@@ -311,7 +338,9 @@ function fiber_photometry_behavior_analysis()
         %   normalizedData - matrix of Delta F/F values
 
         % Identify indices corresponding to the baseline period (-5 to 0 seconds)
-        baselineIdx = timeWindow >= preTime & timeWindow <= 0;
+        baselineStart = -5; % seconds before tag
+        baselineEnd = 0;    % seconds relative to tag
+        baselineIdx = timeWindow >= baselineStart & timeWindow <= baselineEnd;
 
         if sum(baselineIdx) == 0
             error('No data points found in the baseline period (-5 to 0 seconds).');
