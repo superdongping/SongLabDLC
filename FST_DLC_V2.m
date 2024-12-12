@@ -1,6 +1,6 @@
 % MATLAB Script to Quantify and Visualize Weighted Immobility in Forced Swim Test for Multiple Mice
 % This script processes multiple CSV files in the current folder, uses the first MP4 file for scaling,
-% retrieves FPS from the first MP4 file, performs analysis, and saves the results accordingly.
+% retrieves FPS from the first MP4 file, performs analysis from 0 to 300 seconds, and saves the results accordingly.
 
 % Clear workspace, close all figures, and clear command window
 close all;
@@ -307,7 +307,7 @@ for i = 1:length(csvFiles)
         xlabel('Time (s)');
         ylabel('Total Speed (cm/s)');
         title(sprintf('%s - Total Speed', bodyPart));
-        legend('Total Speed', sprintf('Threshold (%d cm/s)', speedThreshold), 'Immobilized');
+        legend('Total Speed', sprintf('Threshold (%d cm/s)', speedThreshold), 'Immobilized', 'Location', 'best');
         grid on;
         hold off;
     end
@@ -408,7 +408,7 @@ for i = 1:length(csvFiles)
     xlabel('Time (s)');
     ylabel('Immobility Score (%)');
     title('Total Weighted Immobility Score Over Time');
-    legend('Immobility Score', sprintf('Threshold (%d%%)', immobilityThreshold), 'Immobilized');
+    legend('Immobility Score', sprintf('Threshold (%d%%)', immobilityThreshold), 'Immobilized', 'Location', 'best');
     grid on;
     
     % Set x-axis upper limit to 300 seconds
@@ -438,37 +438,37 @@ for i = 1:length(csvFiles)
     %% Step 9: Statistical Analysis of Immobility
     
     % Define time parameters
-    startOmitTime = 60; % seconds to omit (first minute)
-    analysisDuration = 240; % seconds (4 minutes)
+    analysisStartTime = 0;   % Start at 0 seconds
+    analysisEndTime = 300;   % End at 300 seconds
     
     % Convert times to frame indices
-    startOmitFrame = floor(startOmitTime * fps);
-    endAnalysisFrame = startOmitFrame + floor(analysisDuration * fps);
+    startFrame = floor(analysisStartTime * fps) + 1; % +1 because frameIdx starts at 1
+    endFrame = floor(analysisEndTime * fps);
     
     % Ensure we do not exceed the number of frames
-    if endAnalysisFrame > length(immobileFrames)
-        endAnalysisFrame = length(immobileFrames);
+    if endFrame > length(immobileFrames)
+        endFrame = length(immobileFrames);
     end
     
     % Extract relevant frames for analysis
-    analysisImmobilized = immobileFrames(startOmitFrame+1:endAnalysisFrame);
+    analysisImmobilized = immobileFrames(startFrame:endFrame);
     
-    % Total immobile time from the 2nd minute for 4 minutes
+    % Total immobile time from 0 to 300 seconds
     totalImmobilizedTime_analysis = sum(analysisImmobilized) / fps;
     
-    % Latency to first immobility after the first minute
+    % Latency to first immobility within 0-300 seconds
     latencyToFirstImmobility = NaN;
     if any(analysisImmobilized)
-        firstImmobileFrame = find(analysisImmobilized, 1, 'first') + startOmitFrame;
+        firstImmobileFrame = find(analysisImmobilized, 1, 'first') + startFrame - 1;
         latencyToFirstImmobility = firstImmobileFrame / fps;
     end
     
     % Add summary to the summaryData cell array
     summaryData{end+1, 1} = baseName;
     summaryData{end, 2} = totalImmobilizedTime_analysis; % Total immobile time (s)
-    summaryData{end, 3} = latencyToFirstImmobility; % Latency to first immobility (s)
+    summaryData{end, 3} = latencyToFirstImmobility;      % Latency to first immobility (s)
     
-    fprintf('Total Immobilized Time (Analysis Period): %.2f seconds\n', totalImmobilizedTime_analysis);
+    fprintf('Total Immobilized Time (0-300s): %.2f seconds\n', totalImmobilizedTime_analysis);
     if ~isnan(latencyToFirstImmobility)
         fprintf('Latency to First Immobility: %.2f seconds\n', latencyToFirstImmobility);
     else
