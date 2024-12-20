@@ -3,6 +3,7 @@ This repository contains MATLAB scripts designed for batch processing behavioral
 
 If you have any questions about how to install and use Deeplabcut (DLC), find more information here:
 https://deeplabcut.github.io/DeepLabCut/docs/installation.html
+
 https://www.youtube.com/@deeplabcut7702
 
 The repository focuses on processing data from various behavioral assays, including:
