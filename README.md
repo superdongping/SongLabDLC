@@ -48,3 +48,6 @@ Open_field_post_DLC_V3_batch.m: Latest version for batch processing Open Field T
 Zero_Maze_post_DLC_V2_batch.m: Processes Zero Maze data.
 fiber_photometry_behavior_analysis.m: Synchronizes fiber photometry data with videos from behavioral events.
 summarize_fear_data.m: Summarizes fear-related behavioral data.
+
+
+If you have any questions, please get in touch with me at superdongping@gmail.com or pingdong@unc.edu
