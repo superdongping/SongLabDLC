@@ -65,4 +65,6 @@ fiber_photometry_behavior_analysis.m: Synchronizes fiber photometry data with vi
 
 summarize_fear_data.m: Summarizes fear-related behavioral data.
 
+Y_Maze_post_DLC_V1_5.m to process the Y maze data after DLC. The user need to draw 3 arms, arm A, arm B and arm C. Then the MATLAB code will quantify the Sequence and Alternation_Percentage from the Y-maze test.
+
 If you have any questions, please get in touch with me at superdongping@gmail.com or pingdong@unc.edu
