@@ -1,1 +1,12 @@
+### fiber_photometry_video_sync_v4_3.m
+
+**What’s new in this version:**
+- **Baseline Correction**  
+  Implements an adjustable baseline correction routine to compensate for drift over the course of a fiber‑photometry recording.
+- **Low‑Pass Filter Subtraction**  
+  Adds a subtractive low‑pass filter step to remove slow fluctuations and isolate fast signal components.
+- **User Control over Baseline Shift**  
+  Exposes parameters so that users can visually inspect and correct any residual baseline shifts before final analysis.
+
+These additions make it easier to correct for slow drifts and improve the accuracy of ΔF/F calculations during simultaneous video and photometry synchronization.
 
