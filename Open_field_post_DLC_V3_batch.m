@@ -188,6 +188,7 @@ for i = 1:length(csv_files)
     
     % Flip the heatmap data along the Y-axis to match the video orientation
     imagesc(flipud(timeSpentSmoothed), [heatmapMin, adjustedHeatmapMax]);
+    axis square
     colormap('jet');
     colorbar;
     title('Smoothed Heatmap of MainBody Trajectory');
