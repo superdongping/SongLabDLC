@@ -104,11 +104,11 @@ fwBtn.Layout.Row  = 2;
 fwBtn.Layout.Column = 6;
 
 % Tag buttons (Row 2)
-tagB1 = uibutton(g,'Text','Tag Behavior 1','ButtonPushedFcn', @(~,~) tagBehavior(1));
+tagB1 = uibutton(g,'Text','Tag 1','ButtonPushedFcn', @(~,~) tagBehavior(1));
 tagB1.Layout.Row = 2; 
 tagB1.Layout.Column = 7;
 
-tagB2 = uibutton(g,'Text','Tag Behavior 2','ButtonPushedFcn', @(~,~) tagBehavior(2));
+tagB2 = uibutton(g,'Text','Tag 2','ButtonPushedFcn', @(~,~) tagBehavior(2));
 tagB2.Layout.Row = 2; 
 tagB2.Layout.Column = 8;
 
@@ -520,4 +520,5 @@ behavior1Times = []; behavior2Times = [];
     end
 
 end
+
 
