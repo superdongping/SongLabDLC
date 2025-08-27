@@ -6,8 +6,7 @@
 - **Low‑Pass Filter Subtraction**  
   Adds a subtractive low‑pass filter step to remove slow fluctuations and isolate fast signal components.
 - **User Control over Baseline Shift**  
-  Exposes parameters so that users can visually inspect and correct any residual baseline shifts before final analysis.
-
+  Exposes parameters so that users can visually inspect and correct any residual baseline shifts before final analysis
 These additions make it easier to correct for slow drifts and improve the accuracy of ΔF/F calculations during simultaneous video and photometry synchronization.
 
 ### fiber_photometry_video_sync_v4_4.m
