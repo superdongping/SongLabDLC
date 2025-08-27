@@ -114,7 +114,7 @@ tagB2.Layout.Column = 8;
 
 % Save Tags (use the grid, not absolute position)
 saveTagsButton = uibutton(g,'Text','Save Tags', ...
-    'ButtonPushedFcn', @(~,~) saveTags(), 'Enable','off');
+    'ButtonPushedFcn', @(~,~) saveTags(), 'Enable','on');
 saveTagsButton.Layout.Row = 2; 
 saveTagsButton.Layout.Column = 9;
 
@@ -520,3 +520,4 @@ behavior1Times = []; behavior2Times = [];
     end
 
 end
+
