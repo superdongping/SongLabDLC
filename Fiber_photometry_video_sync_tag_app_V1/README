@@ -1,0 +1,216 @@
+# Fiber_photometry_video_sync_tag_app_V1
+
+A MATLAB App Designer tool for **time-locked review of fiber-photometry signals and behavior video**, with per-ROI processing (470/410 correction, ΔF/F%), digital marker/trigger overlays, and a lightweight behavior-tagging workflow that exports to Excel.
+
+---
+
+## Table of Contents
+
+* [Key Features](#key-features)
+* [Requirements](#requirements)
+* [Input Data Assumptions](#input-data-assumptions)
+* [Quick Start](#quick-start)
+* [Interface Guide](#interface-guide)
+* [Signal Processing Pipeline](#signal-processing-pipeline)
+* [Digital Channels (Markers & Triggers)](#digital-channels-markers--triggers)
+* [Behavior Tagging & Export](#behavior-tagging--export)
+* [Video Synchronization](#video-synchronization)
+* [Tips & Troubleshooting](#tips--troubleshooting)
+* [Roadmap](#roadmap)
+* [License](#license)
+
+---
+
+## Key Features
+
+* **CSV ingest with robust time parsing** (datetime, duration, or strings like `H:MM:SS:FF.FFFFFF`).
+* **Automatic ROI detection** from column names (paired `sig_410` and `sig_470` per ROI).
+* Per-ROI **processing stack**: 470/410 correction → low-pass filter → optional baseline detrend → optional high-frequency isolation (raw−LP) → optional **ΔF/F%** → optional smoothing.
+* **Synchronized plots**: processed ROI trace on top, stacked **digital Marker/Trigger** channels below; shared time cursor and x-limits.
+* **Video playback**: load a behavior video, frame-aware play/pause, ±5 s jumps, adjustable speed, and precise seeking to the analysis time.
+* **Behavior tagging** per ROI (types 1–5 with canonical colors), dashed on-trace event lines, sortable tag table, and **Excel export** (`ROI#_Tag#` sheets).
+
+---
+
+## Requirements
+
+* **MATLAB** R2021b or later (App Designer).
+* **Image Processing Toolbox** (recommended).
+* Tested on Windows/macOS; no platform-specific code paths are assumed.
+
+---
+
+## Input Data Assumptions
+
+### Time Column (column 1)
+
+The first CSV column must be a time vector that can be parsed as:
+
+* MATLAB `datetime` or `duration`, **or**
+* String formatted like `H:MM:SS:FF.FFFFFF` (the app automatically normalizes the third `:` to `.` for parsing).
+
+### ROI Columns
+
+ROI channels are auto-discovered by name with the following pattern (case-insensitive):
+
+```
+^ROI[-_ ]?(\d+).*sig[-_ ]?410$
+^ROI[-_ ]?(\d+).*sig[-_ ]?470$
+```
+
+* Each ROI **must** have both a `sig_410` and a `sig_470` column.
+* Example headers: `ROI-1_sig_410`, `ROI_1_sig_470`, `ROI 2 green sig_470`, etc.
+
+### Digital Channels
+
+Any column whose name contains **`Marker`**, **`DIO`**, or **`Trigger`** is treated as a digital channel.
+Special handling: column named **`Input_DIO-2`** (or `Input_DIO_2`) is treated as a *Trigger* channel.
+
+---
+
+## Quick Start
+
+1. **Open the app** (run the class constructor in MATLAB or package as an app and launch).
+2. **Load CSV**: *File → Load CSV*. The app parses time, detects ROIs and digital channels, then draws plots.
+3. *(Optional)* **Load Video**: *File → Load Video* to enable synchronized playback and seeking.
+4. **Select ROI**: use *ROI trace → ROI selection* to choose which ROI to display.
+5. **Configure processing**: toggle 470/410 correction, ΔF/F%, baseline correction, low-pass cutoff, subtract LP, and smoothing.
+6. **Zoom**: enable *Zoomed in* and set the window (seconds) to focus analysis.
+7. **Tag behavior**: pick a *Tag Type* (1–5), optionally a *Color*, then click **Add** at the desired time. Use **Delete** to remove the selected tag table row.
+8. **Export tags**: click **Save Tag** to write `ROI#_Tag#` sheets to Excel (auto-named near the CSV file).
+
+---
+
+## Interface Guide
+
+### File Panel
+
+* **Load CSV**: reads photometry data and initializes time slider/plots.
+* **Load Video**: opens a video file for synchronized viewing.
+
+### Video Play Panel
+
+* **Play/Pause** toggles playback.
+* **<< 5s** / **5s >>** jump backward/forward by 5 seconds.
+* **Playspeed** (0.25–4×) scales playback rate.
+
+### ROI trace Panel
+
+* **ROI selection**: choose ROI index.
+* **470/410 correction**: compute ratio; when off, shows 470 channel directly.
+* **Normalize (ΔF/F%)**: transforms the current signal to ΔF/F% using a robust baseline (10th percentile).
+* **Baseline correction**: polynomial (3rd order) detrend on the low-pass signal.
+* **Subtract Low-Pass**: show high-frequency component (`raw − LP`).
+* **Smooth**: moving mean smoothing (window = 5).
+* **Low-Pass Cutoff (Hz)**: 4th-order Butterworth (zero-phase `filtfilt`), auto-clamped to Nyquist.
+* **Zoomed in** + **window (s)**: enable a centered time window; y-limits recomputed on the visible segment.
+
+### Plots
+
+* **Top**: processed ROI trace, legend, and dashed **time cursor**.
+* **Bottom**: stacked **digital channels** (Markers/Triggers) with abbreviated labels; shares x-limits with the ROI plot.
+
+### Time Slider
+
+* Displays/controls the analysis time; scrubbing updates cursor, plots, and (if loaded) video frame.
+
+### Tag tool Panel
+
+* **Tag Type (1–5)** with canonical colors (Blue, Green, Red, Grey, Magenta).
+* **Add / Delete / Edit** (Edit placeholder for future).
+* **Table**: shows **Number (ID)**, **Tag Type**, **Time (s)**, **ROI number** (non-editable).
+* **Save Tag**: writes per-ROI, per-tag sheets to `.xlsx`.
+
+---
+
+## Signal Processing Pipeline
+
+Given selected ROI *k* with raw signals (s_{470}, s_{410}):
+
+1. **Ratio (optional)**
+   If *470/410 correction* is enabled:
+   [
+   r(t) = \frac{s_{470}(t)}{s_{410}(t)}
+   ]
+   Otherwise (r(t) = s_{470}(t)).
+
+2. **Low-pass filter**
+   4th-order Butterworth at user cutoff (f_c) (zero-phase `filtfilt`) on `r(t)` (with linear fill for NaNs).
+
+3. **Baseline correction (optional)**
+   3rd-order polynomial detrend on the low-pass output.
+
+4. **High-frequency isolation (optional)**
+   If *Subtract Low-Pass* = ON, signal = (r(t) - \text{LP}(t)); else signal = (\text{LP}(t)).
+
+5. **ΔF/F% (optional)**
+   Robust baseline = 10th percentile of current signal (guarded against zeros/NaNs):
+   [
+   \Delta F/F% = \frac{\text{signal} - \text{baseline}}{\text{baseline}} \times 100
+   ]
+
+6. **Smoothing (optional)**
+   Moving mean window = 5 samples (NaN-aware).
+
+Y-limits are computed robustly from the visible time window with ~5% padding; fallbacks ensure stable axes if data are flat or sparse.
+
+---
+
+## Digital Channels (Markers & Triggers)
+
+* Channels whose names contain `Marker`, `DIO`, or `Trigger` are treated as digital inputs (logical 0/1).
+* **`Input_DIO-2` / `Input_DIO_2`** is treated as a trigger channel.
+* Use **Addition Option → Marker/Trigger** checkboxes to show/hide categories.
+* Channels are stacked with abbreviated labels (e.g., `Tr`, `St`, `Sp`), and **share x-limits** with the ROI trace.
+
+---
+
+## Behavior Tagging & Export
+
+* Tags are stored **per ROI** as `(id, type, time, color)`.
+* The table is **read-only** to maintain internal consistency; use **Add** and **Delete**.
+* Tag lines (dashed, colored) are drawn on the ROI plot for the *currently selected ROI*.
+* **Export** (`Save Tag`) writes an Excel workbook with sheets named:
+
+  ```
+  ROI<roi#>_Tag<type#>
+  ```
+
+  Each sheet has a single column: `Time_s`.
+
+---
+
+## Video Synchronization
+
+* Frame-aware playback using a MATLAB `timer` and the cached FPS.
+* **Precise seeking** when paused; **single-seek then drop-frame catch-up** when playing for smoothness.
+* Playback clamps to both the **video duration** and the **time slider range**; the time cursor is shared across plots and video.
+
+---
+
+## Tips & Troubleshooting
+
+* **No ROI found**: verify headers match the patterns for `sig_410` and `sig_470` and that both exist for each ROI.
+* **Time parse error**: ensure the *first* column is a valid `datetime`, `duration`, or a string like `0:00:00:00.0500020`.
+* **Flat/NaN signals**: check for missing values; the app fills for filtering but retains NaNs for transparency in summaries.
+* **Cutoff too high**: the app auto-clamps the low-pass cutoff below Nyquist; reduce `Hz` if you see ringing.
+* **Video lags**: lower **Playspeed** or avoid extremely large HD files; ensure the video codec is readable by MATLAB.
+
+---
+
+## Roadmap
+
+* Tag **edit/move** UI.
+* Batch import/export for tags and settings.
+* Multi-ROI overlay view with per-ROI color coding.
+* Optional artifact removal and event-triggered averaging.
+
+---
+
+## License
+
+This project is licensed under the **MIT License**.
+Copyright (c) 2025 Ping Dong
+
+```
+
