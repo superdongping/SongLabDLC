@@ -57,6 +57,10 @@ NPR_post_DLC_V4_batch.m: Latest version for batch processing NPR data.
 
 NPR_post_DLC_V5_batch.m changes the way the user to define the two ROIs for the objects. It asks the user to draw a line of one of the open field boarder as 0.45m. It changed to let the user click to specify the centers of the two ROIs. For the ROI radius, it is pre-define as 0.04 m.
 
+NPR_post_DLC_V5_1_batch.m: Updates exploration event detection to a bout-based method. It merges short gaps between consecutive exploration frames into a single continuous episode, and filters out brief bouts shorter than min_bout_sec = 0.15 s. This prevents one investigation episode from being split into multiple events (e.g., “3.25, 3.50, 3.75…” now counts as one event), and calculates total exploration time as the summed duration of merged bouts. This update also adds discrimination ratio outputs in the Summary sheet:
+Discrimination Ratio (Object 1 vs 2) = (T1 − T2) / (T1 + T2)
+Discrimination Ratio (Object 2 vs 1) = (T2 − T1) / (T1 + T2)
+It appends a Note column to flag exceptions: (1) if either object time is 0, and (2) if total exploration time (T1+T2) is < 5 s (suggesting low movement; check tracking trace).
 Open_field_post_DLC_V3_batch.m: Latest version for batch processing Open Field Test data.
 
 Zero_Maze_post_DLC_V2_batch.m: Processes Zero Maze data.
