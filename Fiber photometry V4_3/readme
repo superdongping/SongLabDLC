@@ -15,3 +15,8 @@ These additions make it easier to correct for slow drifts and improve the accura
 - **Signal Processing: Low-pass smoothing (adjustable cutoff), cubic baseline correction, add ΔF/F% normalization, optional high-frequency (raw–LP).
 - **Behavior Tools: Tag 1 & 2, export to Excel (two sheets) + TIFF snapshot.
 - **Playback: Play/pause, ±5s navigation, slider sync, safe timer cleanup.
+
+### fiber_photometry_video_sync_v4_6 update
+- **Added peak detection for processed photometry signals, including customizable baseline window and smoothing for threshold calculation.
+- **Peak results now include peak time, amplitude, AUC, frequency, and summary export to Excel.
+- **Improved CSV time parsing to support more input formats and refined the GUI layout for better usability.
