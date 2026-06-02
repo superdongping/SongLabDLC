@@ -1,6 +1,14 @@
 SongLabDLC
 This repository contains MATLAB scripts designed for batch processing behavioral analysis data, specifically for use after extracting mouse body parts with DeepLabCut (DLC). 
 
+Standardized behavior pipeline
+
+A new unified behavior-analysis entry point is available in:
+
+behavior_pipeline/SongLabDLC_behavior_analysis.m
+
+Run this file in MATLAB to select the assay type, select the data folder, match DLC CSV files with MP4 videos, and save summary results, QC figures, and run metadata. The original assay-specific scripts are kept in place while the standardized pipeline is validated.
+
 If you have any questions about how to install and use Deeplabcut (DLC), find more information here:
 https://deeplabcut.github.io/DeepLabCut/docs/installation.html
 
