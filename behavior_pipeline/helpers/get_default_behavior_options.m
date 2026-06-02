@@ -17,7 +17,7 @@ switch assayKey
         options.center_square_m = 0.25;
         options.heatmap_grid_size = [100, 100];
         options.heatmap_sigma = 2;
-        options.heatmap_display_max_fraction = 0.20;
+        options.heatmap_color_limit_sec = [];
     case 'NPR'
         options.analysis_duration_sec = 6 * 60;
         options.likelihood_threshold = 0.03;

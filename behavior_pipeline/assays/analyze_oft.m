@@ -31,10 +31,16 @@ centralArea = [
 close(gcf);
 
 summaryData = {};
-heatmapMin = inf;
 heatmapMax = -inf;
 heatmaps = cell(numel(pairs), 1);
 trackData = cell(numel(pairs), 1);
+pixelsToCm = 100 / pixelsPerMeter;
+openFieldWidthCm = openFieldPosition(3) * pixelsToCm;
+openFieldHeightCm = openFieldPosition(4) * pixelsToCm;
+xEdgesCm = linspace(0, openFieldWidthCm, options.heatmap_grid_size(1));
+yEdgesCm = linspace(0, openFieldHeightCm, options.heatmap_grid_size(2));
+xCentersCm = edge_centers(xEdgesCm);
+yCentersCm = edge_centers(yEdgesCm);
 
 for i = 1:numel(pairs)
     videoInfo = get_video_info(pairs(i).videoPath);
@@ -45,16 +51,19 @@ for i = 1:numel(pairs)
     [x, y, frames] = clean_main_body_trace(main, dlc.frames, fps, options, outerRegionPosition, openFieldPosition);
     trackData{i} = struct('x', x, 'y', y, 'frames', frames, 'fps', fps, 'videoInfo', videoInfo);
 
-    heatmapData = histcounts2(x, y, ...
-        linspace(openFieldPosition(1), openFieldPosition(1) + openFieldPosition(3), options.heatmap_grid_size(1)), ...
-        linspace(openFieldPosition(2), openFieldPosition(2) + openFieldPosition(4), options.heatmap_grid_size(2)), ...
-        'Normalization', 'probability');
-    heatmaps{i} = imgaussfilt(heatmapData, options.heatmap_sigma);
-    heatmapMin = min(heatmapMin, min(heatmaps{i}(:)));
+    xCm = (x - openFieldPosition(1)) * pixelsToCm;
+    yCm = (y - openFieldPosition(2)) * pixelsToCm;
+    occupancyFrames = histcounts2(xCm, yCm, xEdgesCm, yEdgesCm);
+    occupancySeconds = occupancyFrames / fps;
+    heatmaps{i} = imgaussfilt(occupancySeconds, options.heatmap_sigma);
     heatmapMax = max(heatmapMax, max(heatmaps{i}(:)));
 end
 
-adjustedHeatmapMax = heatmapMax * options.heatmap_display_max_fraction;
+if isempty(options.heatmap_color_limit_sec)
+    heatmapColorMax = heatmapMax;
+else
+    heatmapColorMax = options.heatmap_color_limit_sec;
+end
 
 for i = 1:numel(pairs)
     x = trackData{i}.x;
@@ -77,7 +86,7 @@ for i = 1:numel(pairs)
 
     [~, baseName, ~] = fileparts(pairs(i).videoFile);
     save_oft_qc(pairs(i).videoPath, x, y, openFieldPosition, centralArea, scaleLinePosition, outputDir, baseName);
-    save_oft_heatmap(heatmaps{i}, heatmapMin, adjustedHeatmapMax, outputDir, baseName);
+    save_oft_heatmap(heatmaps{i}, xCentersCm, yCentersCm, heatmapColorMax, outputDir, baseName);
 
     summaryData(end+1, :) = {pairs(i).csvFile, pairs(i).videoFile, trajectoryDistanceM, ...
         timeInCentralArea, centralTimeRatio, distanceInCentralM, speedTotal, speedCentral}; %#ok<AGROW>
@@ -95,6 +104,10 @@ result.outer_region_position = outerRegionPosition;
 result.central_area = centralArea;
 result.scale_line_position = scaleLinePosition;
 result.pixels_per_meter = pixelsPerMeter;
+result.pixels_to_cm = pixelsToCm;
+result.open_field_width_cm = openFieldWidthCm;
+result.open_field_height_cm = openFieldHeightCm;
+result.heatmap_color_limit_sec = heatmapColorMax;
 end
 
 function [x, y, frames] = clean_main_body_trace(main, frames, fps, options, outerRegionPosition, openFieldPosition)
@@ -134,16 +147,21 @@ saveas(gcf, fullfile(outputDir, sprintf('%s_FirstFrame_with_Trajectory.tif', bas
 close(gcf);
 end
 
-function save_oft_heatmap(heatmapData, heatmapMin, heatmapMax, outputDir, baseName)
+function centers = edge_centers(edges)
+centers = edges(1:end-1) + diff(edges) / 2;
+end
+
+function save_oft_heatmap(heatmapData, xCentersCm, yCentersCm, heatmapMax, outputDir, baseName)
 figure('Name', sprintf('OFT heatmap - %s', baseName), 'NumberTitle', 'off');
-imagesc(flipud(heatmapData), [heatmapMin, heatmapMax]);
+imagesc(xCentersCm, yCentersCm, heatmapData', [0, heatmapMax]);
 axis square;
 colormap('jet');
-colorbar;
-title('Smoothed Heatmap of MainBody Trajectory');
-xlabel('X Position');
-ylabel('Y Position');
+c = colorbar;
+c.Label.String = 'Time spent (s/bin)';
+title('Smoothed Occupancy Heatmap of MainBody Trajectory');
+xlabel('X Position (cm)');
+ylabel('Y Position (cm)');
 set(gca, 'YDir', 'normal');
-saveas(gcf, fullfile(outputDir, sprintf('%s_SmoothedHeatmap_Adjusted.tif', baseName)));
+saveas(gcf, fullfile(outputDir, sprintf('%s_SmoothedOccupancyHeatmap_sec.tif', baseName)));
 close(gcf);
 end
