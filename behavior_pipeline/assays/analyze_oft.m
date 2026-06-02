@@ -34,6 +34,7 @@ summaryData = {};
 heatmapMax = -inf;
 heatmaps = cell(numel(pairs), 1);
 trackData = cell(numel(pairs), 1);
+allHeatmapValues = [];
 pixelsToCm = 100 / pixelsPerMeter;
 openFieldWidthCm = openFieldPosition(3) * pixelsToCm;
 openFieldHeightCm = openFieldPosition(4) * pixelsToCm;
@@ -57,10 +58,11 @@ for i = 1:numel(pairs)
     occupancySeconds = occupancyFrames / fps;
     heatmaps{i} = imgaussfilt(occupancySeconds, options.heatmap_sigma);
     heatmapMax = max(heatmapMax, max(heatmaps{i}(:)));
+    allHeatmapValues = [allHeatmapValues; heatmaps{i}(:)]; %#ok<AGROW>
 end
 
 if isempty(options.heatmap_color_limit_sec)
-    heatmapColorMax = heatmapMax;
+    heatmapColorMax = robust_heatmap_limit(allHeatmapValues, options.heatmap_color_limit_percentile, heatmapMax);
 else
     heatmapColorMax = options.heatmap_color_limit_sec;
 end
@@ -108,6 +110,8 @@ result.pixels_to_cm = pixelsToCm;
 result.open_field_width_cm = openFieldWidthCm;
 result.open_field_height_cm = openFieldHeightCm;
 result.heatmap_color_limit_sec = heatmapColorMax;
+result.heatmap_raw_max_sec = heatmapMax;
+result.heatmap_color_limit_percentile = options.heatmap_color_limit_percentile;
 end
 
 function [x, y, frames] = clean_main_body_trace(main, frames, fps, options, outerRegionPosition, openFieldPosition)
@@ -151,13 +155,28 @@ function centers = edge_centers(edges)
 centers = edges(1:end-1) + diff(edges) / 2;
 end
 
+function limitValue = robust_heatmap_limit(values, percentileValue, fallbackMax)
+values = values(isfinite(values) & values > 0);
+if isempty(values) || isempty(percentileValue) || isnan(percentileValue)
+    limitValue = fallbackMax;
+    return;
+end
+
+values = sort(values(:));
+idx = max(1, min(numel(values), ceil((percentileValue / 100) * numel(values))));
+limitValue = values(idx);
+if limitValue <= 0
+    limitValue = fallbackMax;
+end
+end
+
 function save_oft_heatmap(heatmapData, xCentersCm, yCentersCm, heatmapMax, outputDir, baseName)
 figure('Name', sprintf('OFT heatmap - %s', baseName), 'NumberTitle', 'off');
 imagesc(xCentersCm, yCentersCm, heatmapData', [0, heatmapMax]);
 axis square;
 colormap('jet');
 c = colorbar;
-c.Label.String = 'Time spent (s/bin)';
+c.Label.String = sprintf('Time spent (s/bin), capped at %.2g s', heatmapMax);
 title('Smoothed Occupancy Heatmap of MainBody Trajectory');
 xlabel('X Position (cm)');
 ylabel('Y Position (cm)');
