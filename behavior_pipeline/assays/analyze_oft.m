@@ -53,7 +53,9 @@ for i = 1:numel(pairs)
     trackData{i} = struct('x', x, 'y', y, 'frames', frames, 'fps', fps, 'videoInfo', videoInfo);
 
     xCm = (x - openFieldPosition(1)) * pixelsToCm;
-    yCm = (y - openFieldPosition(2)) * pixelsToCm;
+    % Video pixel Y increases downward; convert to cm from the arena bottom
+    % so the heatmap has the same visual orientation as the trajectory image.
+    yCm = (openFieldPosition(2) + openFieldPosition(4) - y) * pixelsToCm;
     occupancyFrames = histcounts2(xCm, yCm, xEdgesCm, yEdgesCm);
     occupancySeconds = occupancyFrames / fps;
     heatmaps{i} = imgaussfilt(occupancySeconds, options.heatmap_sigma);
@@ -179,7 +181,7 @@ c = colorbar;
 c.Label.String = sprintf('Time spent (s/bin), capped at %.2g s', heatmapMax);
 title('Smoothed Occupancy Heatmap of MainBody Trajectory');
 xlabel('X Position (cm)');
-ylabel('Y Position (cm)');
+ylabel('Y Position (cm from bottom)');
 set(gca, 'YDir', 'normal');
 saveas(gcf, fullfile(outputDir, sprintf('%s_SmoothedOccupancyHeatmap_sec.tif', baseName)));
 close(gcf);
