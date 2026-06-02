@@ -39,7 +39,8 @@ switch assayKey
         options.likelihood_threshold = 0.01;
     case 'FST'
         options.analysis_duration_sec = 300;
-        options.scale_height_cm = 24.25;
+        options.scale_reference_cm = 24.25;
+        options.scale_reference_label = 'height of the beaker';
         options.speed_threshold_cm_s = 20;
         options.continuous_duration_sec = 1;
         options.immobility_threshold_percent = 70;
@@ -49,7 +50,8 @@ switch assayKey
             'LeftForehand', 10, 'RightForehand', 10, 'LeftHindpaw', 30, 'RightHindpaw', 30);
     case 'TST'
         options.analysis_duration_sec = 360;
-        options.scale_height_cm = 24.25;
+        options.scale_reference_cm = 52;
+        options.scale_reference_label = 'width of the beam';
         options.speed_threshold_cm_s = 10;
         options.continuous_duration_sec = 1;
         options.immobility_threshold_percent = 70;

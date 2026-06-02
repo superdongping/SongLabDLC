@@ -6,12 +6,13 @@ firstFrame = readFrame(firstVideo);
 
 figure('Name', sprintf('%s scaling calibration', assayLabel), 'NumberTitle', 'off');
 imshow(firstFrame);
-title(sprintf('Draw a line to indicate the reference height (%.2f cm)', options.scale_height_cm));
+title(sprintf('Draw a line to indicate the %s (%.2f cm)', ...
+    options.scale_reference_label, options.scale_reference_cm));
 scaleLine = drawline('Color', 'red', 'LineWidth', 2);
 wait(scaleLine);
 scaleLinePosition = scaleLine.Position;
 pixelLength = hypot(diff(scaleLinePosition(:, 1)), diff(scaleLinePosition(:, 2)));
-pixelsToCm = options.scale_height_cm / pixelLength;
+pixelsToCm = options.scale_reference_cm / pixelLength;
 close(gcf);
 
 summaryData = {};
@@ -60,6 +61,8 @@ result = struct();
 result.summary_file = summaryPath;
 result.scale_line_position = scaleLinePosition;
 result.pixels_to_cm = pixelsToCm;
+result.scale_reference_cm = options.scale_reference_cm;
+result.scale_reference_label = options.scale_reference_label;
 result.speed_threshold_cm_s = options.speed_threshold_cm_s;
 result.immobility_threshold_percent = options.immobility_threshold_percent;
 end
