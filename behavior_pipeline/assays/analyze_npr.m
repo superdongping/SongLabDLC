@@ -14,7 +14,8 @@ openFieldPosition = openFieldRect.Position;
 title(sprintf('Draw a line representing %.2f m', options.open_field_scale_m));
 rulerLine = drawline('Color', 'y');
 wait(rulerLine);
-rulerPixelLength = hypot(diff(rulerLine.Position(:, 1)), diff(rulerLine.Position(:, 2)));
+rulerLinePosition = rulerLine.Position;
+rulerPixelLength = hypot(diff(rulerLinePosition(:, 1)), diff(rulerLinePosition(:, 2)));
 pixelsPerMeter = rulerPixelLength / options.open_field_scale_m;
 roiRadiusPixels = options.object_roi_radius_m * pixelsPerMeter;
 
@@ -86,7 +87,7 @@ writetable(eventLogTable, summaryPath, 'Sheet', 'Event_Logs');
 result = struct();
 result.summary_file = summaryPath;
 result.open_field_position = openFieldPosition;
-result.ruler_line_position = rulerLine.Position;
+result.ruler_line_position = rulerLinePosition;
 result.pixels_per_meter = pixelsPerMeter;
 result.object_roi_radius_pixels = roiRadiusPixels;
 result.object_roi_centers = [center1; center2];

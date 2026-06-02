@@ -19,7 +19,8 @@ openFieldPosition = openFieldRect.Position;
 title(sprintf('Draw a line to define %.2f m scale on one side of the open field', options.open_field_scale_m));
 scaleLine = drawline('Color', 'b');
 wait(scaleLine);
-scaleLengthPx = hypot(diff(scaleLine.Position(:, 1)), diff(scaleLine.Position(:, 2)));
+scaleLinePosition = scaleLine.Position;
+scaleLengthPx = hypot(diff(scaleLinePosition(:, 1)), diff(scaleLinePosition(:, 2)));
 pixelsPerMeter = scaleLengthPx / options.open_field_scale_m;
 
 centralWidthPixels = options.center_square_m * pixelsPerMeter;
@@ -75,7 +76,7 @@ for i = 1:numel(pairs)
     speedCentral = distanceInCentralM / timeInCentralArea;
 
     [~, baseName, ~] = fileparts(pairs(i).videoFile);
-    save_oft_qc(pairs(i).videoPath, x, y, openFieldPosition, centralArea, scaleLine.Position, outputDir, baseName);
+    save_oft_qc(pairs(i).videoPath, x, y, openFieldPosition, centralArea, scaleLinePosition, outputDir, baseName);
     save_oft_heatmap(heatmaps{i}, heatmapMin, adjustedHeatmapMax, outputDir, baseName);
 
     summaryData(end+1, :) = {pairs(i).csvFile, pairs(i).videoFile, trajectoryDistanceM, ...
@@ -92,7 +93,7 @@ result.summary_file = summaryPath;
 result.open_field_position = openFieldPosition;
 result.outer_region_position = outerRegionPosition;
 result.central_area = centralArea;
-result.scale_line_position = scaleLine.Position;
+result.scale_line_position = scaleLinePosition;
 result.pixels_per_meter = pixelsPerMeter;
 end
 

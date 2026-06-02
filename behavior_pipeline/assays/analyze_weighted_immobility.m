@@ -9,7 +9,8 @@ imshow(firstFrame);
 title(sprintf('Draw a line to indicate the reference height (%.2f cm)', options.scale_height_cm));
 scaleLine = drawline('Color', 'red', 'LineWidth', 2);
 wait(scaleLine);
-pixelLength = hypot(diff(scaleLine.Position(:, 1)), diff(scaleLine.Position(:, 2)));
+scaleLinePosition = scaleLine.Position;
+pixelLength = hypot(diff(scaleLinePosition(:, 1)), diff(scaleLinePosition(:, 2)));
 pixelsToCm = options.scale_height_cm / pixelLength;
 close(gcf);
 
@@ -57,7 +58,7 @@ summaryPath = save_summary_table(summaryTable, outputDir, summaryFileName);
 
 result = struct();
 result.summary_file = summaryPath;
-result.scale_line_position = scaleLine.Position;
+result.scale_line_position = scaleLinePosition;
 result.pixels_to_cm = pixelsToCm;
 result.speed_threshold_cm_s = options.speed_threshold_cm_s;
 result.immobility_threshold_percent = options.immobility_threshold_percent;
