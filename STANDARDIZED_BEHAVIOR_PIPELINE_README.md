@@ -1,6 +1,6 @@
-# SongLabDLC Behavior Pipeline
+# SongLabDLC Standardized Behavior Pipeline
 
-This folder contains the standardized post-DeepLabCut behavior analysis workflow.
+This repository contains a standardized post-DeepLabCut behavior analysis workflow.
 
 Run the unified entry point from MATLAB:
 
@@ -35,4 +35,4 @@ Each run creates a timestamped output folder containing:
 - QC figures
 - `run_metadata.json`
 
-The original behavior scripts are intentionally left in place while this standardized pipeline is validated.
+Older standalone behavior scripts are archived in `archived_behavior_scripts/` and kept as historical references.
