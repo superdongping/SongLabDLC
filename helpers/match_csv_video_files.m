@@ -1,4 +1,4 @@
-﻿function pairs = match_csv_video_files(dataFolder, preferredExtension)
+function pairs = match_csv_video_files(dataFolder, preferredExtension)
 %MATCH_CSV_VIDEO_FILES Match DLC files by basename; never by directory order.
 % preferredExtension (optional): e.g. '.mp4' resolves same-basename copies.
 if nargin < 2, preferredExtension = ''; end
@@ -9,7 +9,7 @@ for i=1:numel(files)
     [~,base,ext] = fileparts(files(i).name);
     isVideo(i) = any(strcmpi(ext,supported)) && ~endsWith(base,'.pending','IgnoreCase',true);
     isCSV(i) = strcmpi(ext,'.csv') && ~startsWith(base,'summary_','IgnoreCase',true) ...
-        && ~endsWith(base,'_frame_timing','IgnoreCase',true) && ~strcmpi(base,'SongScope_record_log');
+        && ~endsWith(base,'_frame_timing','IgnoreCase',true) && ~strcmpi(base,'SongScope_record_log') && ~strcmpi(base,'BehaviorHub_record_log');
 end
 videos = files(isVideo); csvs = files(isCSV);
 if isempty(csvs), error('SongLabDLC:NoCSV','No candidate DLC CSV files in %s.',dataFolder); end
