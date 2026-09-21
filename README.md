@@ -403,4 +403,7 @@ Run metadata retains original and prepared paths and the reader method. The six 
 
 ## Behavior Hub recording companion
 
+[Behavior Hub source, setup and build instructions](behavior-hub/README.md) | [Validation scope](behavior-hub/VALIDATION.md)
+
+
 Behavior Hub is a separate Windows recording application with an English UI, optional mouse metadata, per-assay duration presets, manual visual alignment aids and retained MKV plus verified MP4. Default durations were imported from `helpers/get_default_behavior_options.m` at commit `9cfb841e38c7909da645b4c46b808fc94434951f`: OFT/NPR/Zero Maze 6 min, Y-maze 8 min, FST 5 min and TST 6 min. These are analysis-duration defaults offered as editable recording presets; the recorder does not change analysis settings or define a treatment protocol.

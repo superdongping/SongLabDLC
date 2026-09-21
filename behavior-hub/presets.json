@@ -1,0 +1,12 @@
+{
+  "source_commit": "9cfb841e38c7909da645b4c46b808fc94434951f",
+  "source_field": "analysis_duration_sec",
+  "seconds": {
+    "OFT": 360,
+    "NPR": 360,
+    "ZERO_MAZE": 360,
+    "Y_MAZE": 480,
+    "FST": 300,
+    "TST": 360
+  }
+}

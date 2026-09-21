@@ -4,3 +4,12 @@ Test files/
 **/SongLabDLC_behavior_results/
 
 tests/fixture_path.txt
+
+# Behavior Hub generated binaries, dependencies and local outputs
+behavior-hub/__pycache__/
+behavior-hub/build/
+behavior-hub/dist/
+behavior-hub/node_modules/
+behavior-hub/ffmpeg.exe
+behavior-hub/*.zip
+behavior-hub/outputs/
