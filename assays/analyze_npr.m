@@ -1,7 +1,7 @@
 function result = analyze_npr(pairs, outputDir, options)
 %ANALYZE_NPR Novel object recognition / preference analysis.
 
-firstVideo = VideoReader(pairs(1).videoPath);
+firstVideo = open_behavior_video(pairs(1).videoPath);
 firstFrame = readFrame(firstVideo);
 
 figure('Name', 'NPR ROI calibration', 'NumberTitle', 'off');
@@ -169,7 +169,7 @@ ends = find(d == -1) - 1;
 end
 
 function save_npr_qc(videoPath, noseX, noseY, exploreROI1, exploreROI2, center1, center2, radius, openFieldPosition, outputDir, baseName)
-videoObj = VideoReader(videoPath);
+videoObj = open_behavior_video(videoPath);
 firstFrame = readFrame(videoObj);
 figure('Name', sprintf('NPR exploration trajectory - %s', baseName), 'NumberTitle', 'off');
 imshow(firstFrame);

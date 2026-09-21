@@ -1,12 +1,13 @@
-function SongLabDLC_behavior_analysis(assayName, dataFolder)
+function SongLabDLC_behavior_analysis(assayName, dataFolder, preferredExtension)
 %SONGLABDLC_BEHAVIOR_ANALYSIS Unified entry point for post-DLC behavior analysis.
 %
 % Run with no inputs for an interactive workflow:
 %   SongLabDLC_behavior_analysis
 %
 % Or provide inputs programmatically:
-%   SongLabDLC_behavior_analysis("OFT", "C:\path\to\data")
+%   SongLabDLC_behavior_analysis("OFT", "C:\path\to\data", ".mp4")
 
+interactive = nargin < 2;
 rootDir = fileparts(mfilename('fullpath'));
 addpath(rootDir);
 addpath(fullfile(rootDir, 'helpers'));
@@ -32,7 +33,7 @@ end
 assayKey = normalize_assay_name(assayName);
 
 if nargin < 2 || strlength(string(dataFolder)) == 0
-    dataFolder = uigetdir(pwd, 'Select folder containing DLC CSV and MP4 files');
+    dataFolder = uigetdir(pwd, 'Select folder containing DLC CSV and video files');
     if isequal(dataFolder, 0)
         disp('Analysis canceled.');
         return;
@@ -41,10 +42,28 @@ end
 dataFolder = char(dataFolder);
 
 options = get_default_behavior_options(assayKey);
-pairs = match_csv_video_files(dataFolder);
+if nargin < 3, preferredExtension = ''; end
+try
+    pairs = match_csv_video_files(dataFolder, preferredExtension);
+catch err
+    if interactive && strcmp(err.identifier,'SongLabDLC:AmbiguousVideo')
+        choices={'.mp4','.mkv','.avi','.mov','.m4v','.mpg','.mpeg','.wmv','.webm','.mj2'};
+        [choice,ok]=listdlg('PromptString','Same-basename copies found. Choose the video format to analyze.', ...
+            'SelectionMode','single','ListString',choices,'Name','Choose video format');
+        if ~ok, disp('Analysis canceled.'); return; end
+        preferredExtension=choices{choice};
+        pairs = match_csv_video_files(dataFolder, preferredExtension);
+    else
+        rethrow(err);
+    end
+end
+for i=1:numel(pairs)
+    pairs(i).originalVideoPath = pairs(i).videoPath;
+    [pairs(i).videoPath,pairs(i).readerMethod] = prepare_behavior_video(pairs(i).videoPath);
+end
 
 if isempty(pairs)
-    error('No matched CSV/MP4 pairs were found in: %s', dataFolder);
+    error('No matched CSV/video pairs were found in: %s', dataFolder);
 end
 
 fprintf('\nMatched files:\n');
@@ -61,7 +80,9 @@ mkdir(runOutputDir);
 
 runInfo = struct();
 runInfo.pipeline = 'SongLabDLC behavior pipeline';
-runInfo.pipeline_version = '0.1.0';
+runInfo.pipeline_version = '0.2.0';
+runInfo.preferred_video_extension = preferredExtension;
+runInfo.timing_assumption = 'Existing assay metrics use nominal/average FPS, not per-frame timestamps. Review irregular-rate recordings before time-based interpretation.';
 runInfo.assay = assayKey;
 runInfo.data_folder = dataFolder;
 runInfo.output_folder = runOutputDir;

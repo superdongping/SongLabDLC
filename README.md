@@ -27,8 +27,8 @@ You need:
 
 - MATLAB
 - DLC output CSV files
-- Matching MP4 behavior videos
-- The CSV and MP4 files for one assay placed in the same folder
+- Matching behavior videos (MP4, AVI, MKV, MOV and other supported containers)
+- The CSV and video files for one assay placed in the same folder
 
 For example:
 
@@ -94,7 +94,7 @@ Choose one:
 
 ### Step 5: Select The Data Folder
 
-Choose the folder containing the matching DLC CSV files and MP4 videos.
+Choose the folder containing the matching DLC CSV files and videos.
 
 The pipeline will show a table of matched files in MATLAB. Check that each CSV is paired with the correct video.
 
@@ -383,3 +383,24 @@ https://www.youtube.com/@deeplabcut7702
 ## Contact
 
 For questions, contact superdongping@gmail.com or pingdong@unc.edu.
+
+
+## Multi-format video input (pipeline 0.2.0)
+
+The unified behavior pipeline discovers MP4, AVI, MKV, MOV, M4V, MPG/MPEG, WMV, WEBM and MJ2 (case-insensitive extensions). Actual decoding depends on the container, codec and system. Tested on Windows with MATLAB R2024a Update 3: H.264 MP4/MKV/MOV and MJPEG AVI. R2024b and R2025 releases are compatibility targets, not yet tested.
+
+Matching removes the DLC model suffix and compares complete basenames. Directory-order matching has been removed. Multiple tracking CSVs for one video are rejected. Same-basename video copies require an explicit format choice (interactive dialog when running without arguments), or:
+
+```matlab
+SongLabDLC_behavior_analysis("OFT", "D:\My_OFT_Data", ".mp4")
+```
+
+The preference resolves duplicate copies only; videos with a single matching container remain eligible. Do not assume same-named files have identical contents. Choose the exact video used for DLC. Rename ambiguous files or keep only the intended tracking result in the analysis folder. Timing reports and SongScope log CSVs are excluded from tracking-file discovery.
+
+The reader first attempts native VideoReader decoding. If that fails, FFmpeg attempts a stream-copy MP4 in a temporary directory. Set `SONGLABDLC_FFMPEG` to the full path of ffmpeg.exe (SongScope includes `_internal/ffmpeg.exe`), or place FFmpeg on PATH. Full decoded frame hashes, counts and relative timestamps (tolerance 1.1 ms) must agree before using that copy. No re-encoding, resizing, frame duplication or original-file replacement is performed. If stream copy or decoding fails, analysis stops with an explanation. Not every codec can be remuxed into MP4. Verified caches are temporary files, not archival outputs.
+
+Run metadata retains original and prepared paths and the reader method. The six existing assays retain their scientific analysis definitions. Their time-based metrics still use nominal/average FPS rather than individual frame timestamps; format support does not repair missing frames or make variable-frame-rate timing exact. Review capture QC before analysis.
+
+## SongScope recording companion
+
+SongScope is a separate Windows recording application with an English UI, optional mouse metadata, per-assay duration presets, manual visual alignment aids and retained MKV plus verified MP4. Default durations were imported from `helpers/get_default_behavior_options.m` at commit `9cfb841e38c7909da645b4c46b808fc94434951f`: OFT/NPR/Zero Maze 6 min, Y-maze 8 min, FST 5 min and TST 6 min. These are analysis-duration defaults offered as editable recording presets; the recorder does not change analysis settings or define a treatment protocol.

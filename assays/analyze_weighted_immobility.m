@@ -1,7 +1,7 @@
 function result = analyze_weighted_immobility(pairs, outputDir, options, assayLabel, summaryFileName)
 %ANALYZE_WEIGHTED_IMMOBILITY Shared FST/TST weighted immobility analysis.
 
-firstVideo = VideoReader(pairs(1).videoPath);
+firstVideo = open_behavior_video(pairs(1).videoPath);
 firstFrame = readFrame(firstVideo);
 
 figure('Name', sprintf('%s scaling calibration', assayLabel), 'NumberTitle', 'off');

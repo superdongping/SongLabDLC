@@ -1,7 +1,7 @@
 function result = analyze_oft(pairs, outputDir, options)
 %ANALYZE_OFT Open Field Test analysis using standardized DLC loading.
 
-firstVideo = VideoReader(pairs(1).videoPath);
+firstVideo = open_behavior_video(pairs(1).videoPath);
 firstFrame = readFrame(firstVideo);
 
 figure('Name', 'OFT ROI calibration', 'NumberTitle', 'off');
@@ -138,7 +138,7 @@ frames = frames(inOpen);
 end
 
 function save_oft_qc(videoPath, x, y, openFieldPosition, centralArea, scaleLinePosition, outputDir, baseName)
-videoObj = VideoReader(videoPath);
+videoObj = open_behavior_video(videoPath);
 firstFrame = readFrame(videoObj);
 figure('Name', sprintf('OFT trajectory - %s', baseName), 'NumberTitle', 'off');
 imshow(firstFrame);

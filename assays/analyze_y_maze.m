@@ -1,7 +1,7 @@
 function result = analyze_y_maze(pairs, outputDir, options)
 %ANALYZE_Y_MAZE Y-maze arm sequence and spontaneous alternation.
 
-firstVideo = VideoReader(pairs(1).videoPath);
+firstVideo = open_behavior_video(pairs(1).videoPath);
 firstFrame = readFrame(firstVideo);
 
 figure('Name', 'Y-maze ROI calibration', 'NumberTitle', 'off');
@@ -107,7 +107,7 @@ alternationPercentage = (alternationCount / totalTriplets) * 100;
 end
 
 function save_y_maze_qc(videoPath, x, y, likelihood, threshold, maskA, maskB, maskC, outputDir, baseName)
-videoObj = VideoReader(videoPath);
+videoObj = open_behavior_video(videoPath);
 firstFrame = readFrame(videoObj);
 validPoints = likelihood >= threshold;
 xTraj = x(validPoints);

@@ -1,7 +1,7 @@
 function info = get_video_info(videoPath)
-%GET_VIDEO_INFO Read basic metadata from an MP4 video.
+%GET_VIDEO_INFO Read basic metadata from a supported video.
 
-videoObj = VideoReader(videoPath);
+videoObj = open_behavior_video(videoPath);
 info = struct();
 info.path = videoPath;
 info.file = string(get_file_name(videoPath));

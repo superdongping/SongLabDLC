@@ -1,85 +1,53 @@
-function pairs = match_csv_video_files(dataFolder)
-%MATCH_CSV_VIDEO_FILES Match DLC CSV files to MP4 videos in a folder.
-
-csvFiles = dir(fullfile(dataFolder, '*.csv'));
-videoFiles = dir(fullfile(dataFolder, '*.mp4'));
-
-csvFiles = csvFiles(~startsWith({csvFiles.name}, 'summary_', 'IgnoreCase', true));
-
-if isempty(csvFiles)
-    error('No CSV files found in: %s', dataFolder);
+﻿function pairs = match_csv_video_files(dataFolder, preferredExtension)
+%MATCH_CSV_VIDEO_FILES Match DLC files by basename; never by directory order.
+% preferredExtension (optional): e.g. '.mp4' resolves same-basename copies.
+if nargin < 2, preferredExtension = ''; end
+supported = {'.mp4','.avi','.mkv','.mov','.m4v','.mpg','.mpeg','.wmv','.webm','.mj2'};
+files = dir(dataFolder); files = files(~[files.isdir]);
+isVideo = false(size(files)); isCSV = false(size(files));
+for i=1:numel(files)
+    [~,base,ext] = fileparts(files(i).name);
+    isVideo(i) = any(strcmpi(ext,supported)) && ~endsWith(base,'.pending','IgnoreCase',true);
+    isCSV(i) = strcmpi(ext,'.csv') && ~startsWith(base,'summary_','IgnoreCase',true) ...
+        && ~endsWith(base,'_frame_timing','IgnoreCase',true) && ~strcmpi(base,'SongScope_record_log');
 end
-if isempty(videoFiles)
-    error('No MP4 files found in: %s', dataFolder);
-end
-
-pairs = struct('csvFile', {}, 'videoFile', {}, 'csvPath', {}, ...
-    'videoPath', {}, 'baseName', {}, 'matchMethod', {});
-
-usedVideos = false(numel(videoFiles), 1);
-
-for i = 1:numel(csvFiles)
-    csvBase = strip_extension(csvFiles(i).name);
-    csvNorm = normalize_name(csvBase);
-    matchIdx = [];
-    matchMethod = '';
-
-    for j = 1:numel(videoFiles)
-        videoBase = strip_extension(videoFiles(j).name);
-        videoNorm = normalize_name(videoBase);
-        if strcmp(csvNorm, videoNorm)
-            matchIdx = j;
-            matchMethod = 'exact basename';
-            break;
-        end
+videos = files(isVideo); csvs = files(isCSV);
+if isempty(csvs), error('SongLabDLC:NoCSV','No candidate DLC CSV files in %s.',dataFolder); end
+if isempty(videos), error('SongLabDLC:NoVideo','No supported video files in %s.',dataFolder); end
+pairs = struct('csvFile',{},'videoFile',{},'csvPath',{},'videoPath',{},'baseName',{},'matchMethod',{});
+used = false(size(videos));
+for i=1:numel(csvs)
+    [~,base] = fileparts(csvs(i).name);
+    % DLC appends its model descriptor to the exact source-video basename.
+    base = regexprep(base,'DLC.*$','','ignorecase');
+    candidates = [];
+    for j=1:numel(videos)
+        [~,vbase] = fileparts(videos(j).name);
+        if strcmpi(base,vbase), candidates(end+1)=j; end %#ok<AGROW>
     end
-
-    if isempty(matchIdx)
-        candidates = [];
-        for j = 1:numel(videoFiles)
-            videoBase = strip_extension(videoFiles(j).name);
-            videoNorm = normalize_name(videoBase);
-            if contains(csvNorm, videoNorm) || contains(videoNorm, csvNorm)
-                candidates(end+1) = j; %#ok<AGROW>
-            end
+    if numel(candidates)>1 && ~isempty(preferredExtension)
+        keep=false(size(candidates));
+        for k=1:numel(candidates)
+            [~,~,ext]=fileparts(videos(candidates(k)).name);
+            keep(k)=strcmpi(ext,preferredExtension);
         end
-        if isscalar(candidates)
-            matchIdx = candidates;
-            matchMethod = 'shared basename';
-        end
+        candidates=candidates(keep);
     end
-
-    if isempty(matchIdx) && numel(csvFiles) == numel(videoFiles)
-        matchIdx = i;
-        matchMethod = 'index fallback';
-        warning('Using index-based match for %s -> %s.', csvFiles(i).name, videoFiles(i).name);
-    end
-
-    if isempty(matchIdx)
-        warning('No MP4 match found for CSV file: %s', csvFiles(i).name);
+    if numel(candidates)>1
+        error('SongLabDLC:AmbiguousVideo', ...
+            'Multiple videos match %s. Specify preferredExtension (e.g. ''.mp4'') or select a folder with one format per basename.',csvs(i).name);
+    elseif isempty(candidates)
+        warning('SongLabDLC:UnmatchedCSV','No exact video basename match for %s; skipped.',csvs(i).name);
         continue;
     end
-
-    if usedVideos(matchIdx)
-        warning('Video file was matched more than once: %s', videoFiles(matchIdx).name);
+    j=candidates(1);
+    if used(j)
+        error('SongLabDLC:DuplicateCSV','Multiple DLC CSV files match %s. Keep one chosen tracking result per video.',videos(j).name);
     end
-    usedVideos(matchIdx) = true;
-
-    pairs(end+1).csvFile = csvFiles(i).name; %#ok<AGROW>
-    pairs(end).videoFile = videoFiles(matchIdx).name;
-    pairs(end).csvPath = fullfile(csvFiles(i).folder, csvFiles(i).name);
-    pairs(end).videoPath = fullfile(videoFiles(matchIdx).folder, videoFiles(matchIdx).name);
-    pairs(end).baseName = strip_extension(videoFiles(matchIdx).name);
-    pairs(end).matchMethod = matchMethod;
+    used(j)=true;
+    [~,vbase]=fileparts(videos(j).name);
+    pairs(end+1)=struct('csvFile',csvs(i).name,'videoFile',videos(j).name, ...
+        'csvPath',fullfile(dataFolder,csvs(i).name),'videoPath',fullfile(dataFolder,videos(j).name), ...
+        'baseName',vbase,'matchMethod','exact basename (DLC suffix removed)'); %#ok<AGROW>
 end
-end
-
-function out = strip_extension(fileName)
-[~, out, ~] = fileparts(fileName);
-end
-
-function out = normalize_name(name)
-out = lower(char(name));
-out = regexprep(out, 'dlc.*$', '');
-out = regexprep(out, '[^a-z0-9]', '');
 end

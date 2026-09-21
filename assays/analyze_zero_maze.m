@@ -1,7 +1,7 @@
 function result = analyze_zero_maze(pairs, outputDir, options)
 %ANALYZE_ZERO_MAZE Zero maze open-arm ratio and movement summary.
 
-firstVideo = VideoReader(pairs(1).videoPath);
+firstVideo = open_behavior_video(pairs(1).videoPath);
 firstFrame = readFrame(firstVideo);
 
 figure('Name', 'Zero maze ROI calibration', 'NumberTitle', 'off');
@@ -78,7 +78,7 @@ result.closed_arm_roi_2 = maskROI2;
 end
 
 function save_zero_maze_qc(videoPath, x, y, maskROI1, maskROI2, outputDir, baseName)
-videoObj = VideoReader(videoPath);
+videoObj = open_behavior_video(videoPath);
 firstFrame = readFrame(videoObj);
 figure('Name', sprintf('Zero maze trajectory - %s', baseName), 'NumberTitle', 'off');
 imshow(firstFrame);
