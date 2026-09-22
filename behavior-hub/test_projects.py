@@ -81,16 +81,4 @@ class ProjectTests(unittest.TestCase):
   self.assertEqual(self.r.session(sid)['phases']['recording']['mp4_status'],'queued')
   self.r.queue_action({'action':'resume'});self.r.last_activity=0
   self.wait(lambda:self.r.session(sid)['phases']['recording']['mp4_status']=='verified')
- def test_calibration_tracking_and_loss(self):
-  import numpy as np,cv2
-  e=self.r.alignment;e.begin({'camera':'test','size':'320x240'})
-  rng=np.random.default_rng(5);gray=rng.integers(0,255,(240,320),dtype=np.uint8);image=cv2.cvtColor(gray,cv2.COLOR_GRAY2BGR)
-  def offer(img):e.offer(cv2.imencode('.jpg',img)[1].tobytes())
-  offer(image);e.freeze();e.select(dict(kind='rectangle',points=[[40,30],[280,30],[280,210],[40,210]]))
-  shifted=cv2.warpAffine(image,np.float32([[1,0,2],[0,1,1]]),(320,240));offer(shifted)
-  self.wait(lambda:e.state().get('points',[[0]])[0][0]>41);self.assertTrue(e.state()['metrics']['alignment_ok']);self.assertGreater(e.state()['points'][0][0],41)
-  profile=e.confirm();self.assertEqual(profile['verification'],'Verified this session')
-  offer(np.zeros_like(image));self.wait(lambda:e.features is None);self.assertEqual(e.state()['verification'],'Needs verification')
-  with self.assertRaises(ValueError):e.confirm()
-
 if __name__=='__main__':unittest.main(verbosity=2)

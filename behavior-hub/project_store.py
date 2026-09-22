@@ -62,7 +62,7 @@ class ProjectSupport:
                     if 'settings' in data:self.db['settings']=copy.deepcopy(data['settings'])
                     self.persist()
                 return str(self.project_file)
-            self.stop_preview();self.preempt_background();self.alignment.stop()
+            self.stop_preview();self.preempt_background()
             if kind=='import_legacy':
                 if not self.project_file: raise ValueError('Open a project first.')
                 imported=[]

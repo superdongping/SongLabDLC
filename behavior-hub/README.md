@@ -1,4 +1,4 @@
-# Behavior Hub 1.1.0 — Behavioral Recording Studio
+# Behavior Hub 1.1.1 — Behavioral Recording Studio
 
 Behavior Hub is an English-language, local Windows application for behavioral video capture. It is independent of VAME Recorder and does not administer treatment or launch DLC/MATLAB analysis.
 
@@ -54,13 +54,13 @@ For batch analysis, copy chosen videos and matching DLC CSVs into one analysis f
 
 ## Manual alignment
 
-Start calibration, freeze a frame, select four rectangle corners clockwise from top-left (or drag ellipse bounds), then Track selected arena. Adjust the camera by hand while KLT features and a robust affine transform update the outline. Rotation, opposite-edge asymmetry, center offset and circle axis ratio provide visual guidance. Confirm alignment only after Alignment OK. This adapts the v2 workflow using OpenCV; it is not a bit-for-bit MATLAB tracker port or a physical calibration certificate.
+Restored the 1.0.1 manual alignment controls: Rectangle, Circle, Grid and crosshair, adjustable guide size, Capture reference, Clear reference and reference opacity. Physically adjust the camera against the guides/reference. Preview remains up to 8 fps. There is no dynamic tracking, 25 fps calibration mode or automatic alignment confirmation in this version. Overlays are never saved into the video.
 
-Calibration targets 25 fps and displays measured camera delivery, tracking and browser refresh rates separately. It may run slower on your camera/computer. Recording automatically stops tracking and uses the lower-load preview. No overlays are burned into videos. Each behavior can save an outline in the project. Loaded profiles always require verification (including same-day reloads); freeze the current image, load the outline, check geometry and track again.
+References are temporary and cleared when switching projects, camera/resolution or starting a recording. Re-capture and check the reference each session. Existing 1.1.0 project files and stored calibration metadata remain readable; old dynamic profiles are retained in the project but not used by this version.
 
 ## Projects and idle processing
 
-New Project creates a uniquely named folder containing BehaviorHub.project.json and data/. Save Project also saves the current recording settings. Records, events, corrections, queue changes and calibration selections autosave. Open Project restores records/settings and pending work. One project can span behaviors and days. Only one service may open a project at a time. Close it before copying the **whole project folder**; video references are relative. A project file alone does not contain videos. Recent projects are local shortcuts; after moving computers use Open Project at the new location.
+New Project creates a uniquely named folder containing BehaviorHub.project.json and data/. Save Project also saves the current recording settings. Records, events, corrections, queue changes autosave. Open Project restores records/settings and pending work. One project can span behaviors and days. Only one service may open a project at a time. Close it before copying the **whole project folder**; video references are relative. A project file alone does not contain videos. Recent projects are local shortcuts; after moving computers use Open Project at the new location.
 
 Legacy Library preserves original records. Import legacy records (copy) explicitly copies available non-deleted old recordings into the current project; it never moves originals. Imported copies consume additional disk space.
 
@@ -77,7 +77,7 @@ Existing SongLabDLC time-based metrics assume uniform nominal/average FPS. Conta
 
 ## Source and rebuilding
 
-Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3; NumPy 1.26.4; OpenCV headless 4.11.0.86. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with the supplied BehaviorHub.spec. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.1.0/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
+Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with the supplied BehaviorHub.spec. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.1.1/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
 
 ## Upgrade from SongScope
 
@@ -92,7 +92,7 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-To create `dist/1.1.0/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
+To create `dist/1.1.1/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
 
 ```powershell
 python build_windows.py

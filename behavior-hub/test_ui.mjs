@@ -13,7 +13,8 @@ try{
  await new Promise(r=>setTimeout(r,500));$('start').click();
  await wait(()=>$('status').textContent.includes('Recording saved'));
  assert.match($('qc').textContent,/MP4: queued/);await wait(()=>dom.window.eval('busy===false'));$('processNow').click();await wait(()=>$('qc').textContent.includes('MP4: verified'));assert.match($('qc').textContent,/MP4: verified/);assert.match($('qc').textContent,/Measured FPS: 25.000/);
- $('calKind').value='circle';$('calKind').dispatchEvent(new dom.window.Event('change'));assert.equal($('ellipseFields').hidden,false);
+ $('shape').value='circle';$('shape').dispatchEvent(new dom.window.Event('change'));assert.equal($('calStart'),null);
+ $('previewStart').click();await wait(()=>dom.window.eval('state.preview'));await new Promise(r=>setTimeout(r,1000));$('referenceCapture').click();await wait(()=>!$('reference').hidden);$('referenceClear').click();assert.equal($('reference').hidden,true);$('previewStop').click();await wait(()=>!dom.window.eval('state.active'));await wait(()=>dom.window.eval('busy===false'));
  let button=name=>[...d.querySelectorAll('#history button')].find(b=>b.textContent===name);
  button('Edit').click();$('edit_mouse_id').value='OptionalMouse';$('editReason').value='UI test';$('editForm').dispatchEvent(new dom.window.Event('submit',{cancelable:true}));
  await wait(()=>!$('editDialog').open);await wait(()=>$('details').textContent.includes('OptionalMouse'));
@@ -22,4 +23,4 @@ try{
  await new Promise(r=>setTimeout(r,300));button('Restore').click();await wait(()=>!!button('Edit'));
  assert.doesNotMatch(d.body.textContent,/[\u4e00-\u9fff]/);assert.equal(errors.length,0,errors.join('\n'));
  console.log('BEHAVIORHUB_DOM_OK: presets, blank metadata, 720p, timed recording, MP4/QC, guide control, edit/delete/restore, English');
-}finally{dom.window.eval('clearInterval(timer);clearInterval(imageTimer);clearInterval(alignmentTimer)');await new Promise(r=>setTimeout(r,500));dom.window.close()}
+}finally{dom.window.eval('clearInterval(timer);clearInterval(imageTimer)');await new Promise(r=>setTimeout(r,500));dom.window.close()}

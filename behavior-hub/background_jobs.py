@@ -87,6 +87,6 @@ class BackgroundSupport:
         finally:self.processing_id=None
 
     def close_services(self):
-        self.processing_stop.set();self.preempt_background();self.alignment.close()
+        self.processing_stop.set();self.preempt_background()
         if self.scheduler:self.scheduler.join(3)
         if self.project_handle:self.project_handle.close();self.project_handle=None

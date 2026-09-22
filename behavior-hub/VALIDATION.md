@@ -1,3 +1,11 @@
+# Behavior Hub 1.1.1 alignment rollback - 2026-09-22
+
+Only camera alignment was rolled back to the 1.0.1 static guides and temporary reference overlay. Portable projects, date-first unique filenames and recording-priority idle MP4/QC queue remain. Existing dynamic calibration profiles are preserved but inactive. No OpenCV/NumPy tracking runtime is bundled. The user reported successful testing and authorized GitHub publication on 2026-09-22.
+
+Validation: 11 service tests cover recording/project/queue/management regressions. Packaged EXE HTTP + DOM test covers recording, background verification, reference capture/clear, static circle control, record edits/deletion/restoration, exports, duplicate launch and project reopen. Synthetic images and mocked native folder selection do not certify real camera performance or actual browser layout. The user accepted this build after testing. This feedback does not establish quantitative camera FPS, full-duration performance or MATLAB scientific regression coverage.
+
+## Historical validation (previous versions only)
+
 # Behavior Hub 1.1.0 validation - 2026-09-22
 
 Passed on this Windows computer using synthetic video / isolated temporary projects:

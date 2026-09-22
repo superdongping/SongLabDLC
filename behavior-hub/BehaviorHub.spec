@@ -7,13 +7,13 @@ sys.path.insert(0,str(Path(SPECPATH)/"vendor"))
 a = Analysis(
     ['app.py'],
     pathex=[str(__import__('pathlib').Path(SPECPATH)/'vendor')],
-    binaries=[('ffmpeg.exe', '.')]+[(str(p),'numpy.libs') for p in (__import__('pathlib').Path(SPECPATH)/'vendor/numpy.libs').glob('*.dll')],
+    binaries=[('ffmpeg.exe', '.')],
     datas=[('index.html', '.'), ('presets.json', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['cv2','numpy'],
     noarchive=False,
     optimize=0,
 )

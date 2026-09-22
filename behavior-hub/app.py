@@ -30,7 +30,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 TOKEN = secrets.token_urlsafe(32)
-APP_VERSION = '1.1.0'
+APP_VERSION = '1.1.1'
 
 def now():
     return dt.datetime.now().astimezone().isoformat(timespec='milliseconds')
@@ -73,7 +73,6 @@ def numeric(v, low, high, label):
 sys.path.insert(0, str(Path(__file__).parent / 'vendor'))
 from project_store import ProjectSupport, atomic
 from background_jobs import BackgroundSupport
-from alignment import AlignmentEngine
 
 class Recorder(ProjectSupport, BackgroundSupport):
     def __init__(self, data_dir, synthetic=False):
@@ -100,8 +99,6 @@ class Recorder(ProjectSupport, BackgroundSupport):
         self.last_progress = 0
         self.log_tail = []
         self.init_projects()
-        self.alignment=AlignmentEngine()
-        self.calibration_mode=False
         self.ffmpeg_path=ffmpeg;self.process_flags=FLAGS
         for s in self.db['sessions']:
             if s['status'] in ('starting', 'recording', 'finalizing'):
@@ -129,7 +126,7 @@ class Recorder(ProjectSupport, BackgroundSupport):
         with self.lock:
             d = copy.deepcopy(self.db)
             d.update(self.project_state())
-            d.update(processing=self.queue_state(),alignment=self.alignment.state())
+            d.update(processing=self.queue_state())
             d.update(active=self.active, preview=bool(self.proc and self.active == 'preview'),
                      frames=self.frames, media_seconds=self.media_seconds,
                      elapsed=round(time.monotonic() - self.started_mono, 2) if self.started_mono else 0,
@@ -184,14 +181,14 @@ class Recorder(ProjectSupport, BackgroundSupport):
         with self.command_lock:
             if self.active and self.active != 'preview':
                 raise ValueError('Recording is in progress. Preview already uses the same video stream.')
-            self.stop_preview();self.preempt_background();self.calibration_mode=False;self.alignment.stop()
+            self.stop_preview();self.preempt_background()
             self.launch(self.capture_settings(data), None, None)
 
     def start(self, data):
         with self.command_lock:
             if self.active and self.active != 'preview':
                 raise ValueError('A recording or finalization is already in progress.')
-            self.stop_preview();self.preempt_background();self.calibration_mode=False;self.alignment.stop()
+            self.stop_preview();self.preempt_background()
             if not self.project_file:raise ValueError('Create or open a project before recording.')
             with self.lock:
                 c = self.capture_settings(data)
@@ -239,7 +236,7 @@ class Recorder(ProjectSupport, BackgroundSupport):
         cmd += ['-map', '0:v:0', '-an']
         if session:
             cmd += ['-t', str(duration)]
-        vf = 'scale=960:-2' if self.calibration_mode and not session else 'fps=8,scale=640:-2'
+        vf = 'fps=8,scale=640:-2'
         cmd += ['-vf', vf, '-c:v', 'mjpeg', '-q:v', '6', '-threads', '1', '-f', 'image2pipe', 'pipe:1']
         with self.lock:
             self.active = session['id'] if session else 'preview'
@@ -298,7 +295,6 @@ class Recorder(ProjectSupport, BackgroundSupport):
                     if start >= 0:
                         self.preview = buf[start:end]
                         self.preview_at = time.monotonic()
-                        self.alignment.offer(self.preview)
                     buf = buf[end:]
                 if len(buf) > 4_000_000:
                     buf = b''
@@ -458,30 +454,6 @@ class Recorder(ProjectSupport, BackgroundSupport):
             self.persist()
             return s['id']
 
-    def calibration_action(self,data):
-        with self.command_lock:
-            action=data.get('action')
-            if self.active and self.active!='preview':raise ValueError('Calibration is disabled while recording.')
-            self.preempt_background()
-            if action=='start':
-                self.stop_preview();c=self.capture_settings(data);c['fps']=25
-                self.calibration_mode=True;self.alignment.begin(c);self.launch(c,None,None)
-                return None
-            if action=='stop':self.stop_preview();self.alignment.stop();self.calibration_mode=False;return None
-            if action=='freeze':return self.alignment.freeze()
-            if action=='select':profile=self.alignment.select(data)
-            elif action=='confirm':profile=self.alignment.confirm()
-            elif action=='load':
-                profile=copy.deepcopy(self.db.get('calibrations',{}).get(data.get('key')))
-                if not profile:raise ValueError('No saved calibration for this behavior.')
-                profile['verification']='Needs verification'
-                return profile
-            else:raise ValueError('Unknown calibration action.')
-            if self.project_file:
-                self.db.setdefault('calibrations',{})[data.get('key','OFT')]=profile
-                with self.lock:self.persist()
-            return profile
-
     def event(self, data):
         with self.lock:
             s = self.session(data['session_id'])
@@ -541,7 +513,6 @@ class Handler(BaseHTTPRequestHandler):
         token=self.headers.get('X-SongScope-Token') or parse_qs(u.query).get('token',[''])[0]
         if not secrets.compare_digest(token,TOKEN): return self.reply(403,{'error':'Open the application from its local home page.'})
         try:
-            if u.path=='/api/alignment': return self.reply(200,self.server.rec.alignment.state())
             if u.path=='/api/presets': return self.reply(200,json.loads((ROOT/'presets.json').read_text()))
             if u.path=='/api/state': return self.reply(200,self.server.rec.state())
             if u.path=='/api/devices': return self.reply(200,{'devices':devices()})
@@ -566,7 +537,6 @@ class Handler(BaseHTTPRequestHandler):
             result=None
             if route=='/api/project': result=r.project_action(data)
             elif route=='/api/queue': result=r.queue_action(data)
-            elif route=='/api/calibration': result=r.calibration_action(data)
             elif route=='/api/activity': pass
             elif route=='/api/project-folder':
                 import tkinter as tk

@@ -1,4 +1,4 @@
-Behavior Hub 1.1.0 - local research tool
+Behavior Hub 1.1.1 - local research tool
 
 Python 3.11.4: Python Software Foundation License and included component licenses.
 Full license text: licenses/Python-LICENSE.txt
@@ -20,6 +20,3 @@ https://pyinstaller.org/en/stable/license.html
 Python's bundled Tcl/Tk runtime is included for the directory picker.
 
 Application source is included in Source/. No third-party branding or affiliation is implied.
-
-NumPy 1.26.4 and OpenCV headless 4.11.0.86:
-See licenses/numpy-LICENSE.txt, OpenCV-LICENSE.txt and OpenCV-3RD-PARTY.txt.
