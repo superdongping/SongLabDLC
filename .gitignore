@@ -13,3 +13,5 @@ behavior-hub/node_modules/
 behavior-hub/ffmpeg.exe
 behavior-hub/*.zip
 behavior-hub/outputs/
+
+behavior-hub/vendor/

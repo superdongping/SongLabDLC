@@ -1,10 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+from pathlib import Path
+sys.path.insert(0,str(Path(SPECPATH)/"vendor"))
 
 
 a = Analysis(
     ['app.py'],
-    pathex=[],
-    binaries=[('ffmpeg.exe', '.')],
+    pathex=[str(__import__('pathlib').Path(SPECPATH)/'vendor')],
+    binaries=[('ffmpeg.exe', '.')]+[(str(p),'numpy.libs') for p in (__import__('pathlib').Path(SPECPATH)/'vendor/numpy.libs').glob('*.dll')],
     datas=[('index.html', '.'), ('presets.json', '.')],
     hiddenimports=[],
     hookspath=[],

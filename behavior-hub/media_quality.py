@@ -4,6 +4,9 @@ from fractions import Fraction
 import math
 from pathlib import Path
 import subprocess
+import time
+import uuid
+import os
 
 
 def timing_metrics(pts, fps, target):
@@ -28,15 +31,39 @@ def timing_metrics(pts, fps, target):
                 qc='REVIEW' if reasons else 'TIMING_CHECKS_PASSED', qc_reasons=reasons)
 
 
-def decode(ffmpeg, path, flags, timeout):
-    result = subprocess.run([ffmpeg,'-hide_banner','-v','error','-xerror','-i',str(path),
-                             '-map','0:v:0','-an','-fps_mode','passthrough','-enc_time_base','1:1000000','-f','framemd5','-'],
-                            capture_output=True,timeout=timeout,creationflags=flags)
+class ProcessingCancelled(Exception):
+    pass
+
+
+def run_cancellable(args, flags, timeout, cancel=None):
+    if cancel and cancel.is_set(): raise ProcessingCancelled()
+    priority = subprocess.BELOW_NORMAL_PRIORITY_CLASS if os.name == 'nt' else 0
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=flags | priority)
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            if cancel and cancel.is_set(): raise ProcessingCancelled()
+            if time.monotonic() > deadline: raise TimeoutError('Background processing timed out.')
+            try:
+                out, err = p.communicate(timeout=.15)
+                return subprocess.CompletedProcess(args,p.returncode,out,err)
+            except subprocess.TimeoutExpired:
+                pass
+    finally:
+        if p.poll() is None:
+            p.kill(); p.communicate()
+
+
+def decode(ffmpeg, path, flags, timeout, cancel=None):
+    result = run_cancellable([ffmpeg,'-hide_banner','-v','error','-xerror','-threads','2','-i',str(path),
+                             '-map','0:v:0','-an','-fps_mode','passthrough','-enc_time_base','1:1000000',
+                             '-threads','2','-f','framemd5','-'],flags,timeout,cancel)
     if result.returncode:
         raise RuntimeError('Decode failed: '+result.stderr.decode('utf-8','replace')[-1200:])
     tb = None
     rows = []
     for line in result.stdout.decode('ascii').splitlines():
+        if cancel and cancel.is_set(): raise ProcessingCancelled()
         if line.startswith('#tb 0:'): tb=Fraction(line.split(':',1)[1].strip())
         elif line and not line.startswith('#'):
             parts=[v.strip() for v in line.split(',')]
@@ -45,37 +72,49 @@ def decode(ffmpeg, path, flags, timeout):
     return rows
 
 
-def finalize_video(ffmpeg, source, fps, target, flags=0):
+def finalize_video(ffmpeg, source, fps, target, flags=0, cancel=None):
     result = dict(qc='REVIEW',qc_reasons=[],mp4_status='failed',mp4_file=None)
     timeout = max(120, target*2)
+    partial=source.with_name(source.stem+'.'+uuid.uuid4().hex+'.pending.mp4')
+    csv_temp=source.with_name(source.stem+'.'+uuid.uuid4().hex+'.pending.csv')
     try:
-        original=decode(ffmpeg,source,flags,timeout)
+        original=decode(ffmpeg,source,flags,timeout,cancel)
         result.update(timing_metrics([x[0] for x in original],fps,target))
+        final=source.with_suffix('.mp4')
+        # After a crash between file publication and queue update, verify the existing copy.
+        if final.exists():
+            converted=decode(ffmpeg,final,flags,timeout,cancel)
+        else:
+            remux=run_cancellable([ffmpeg,'-hide_banner','-v','error','-i',str(source),'-map','0:v:0',
+                                  '-an','-c:v','copy','-movflags','+faststart','-n',str(partial)],flags,timeout,cancel)
+            if remux.returncode: raise RuntimeError('MP4 conversion failed: '+remux.stderr.decode('utf-8','replace')[-1200:])
+            converted=decode(ffmpeg,partial,flags,timeout,cancel)
+        if len(original)!=len(converted) or any(a[1]!=b[1] for a,b in zip(original,converted)):
+            raise RuntimeError('MP4 decoded frame count or content differs from MKV. Existing files retained.')
+        error=max(abs((a[0]-original[0][0])-(b[0]-converted[0][0])) for a,b in zip(original,converted))
+        if error>.0011: raise RuntimeError('MP4 relative timestamps differ by more than 1.1 ms.')
         csv_path=source.with_name(source.stem+'_frame_timing.csv')
-        with csv_path.open('w',newline='',encoding='utf-8') as out:
+        with csv_temp.open('w',newline='',encoding='utf-8') as out:
             writer=csv.writer(out)
             writer.writerow(['frame_index','relative_pts_seconds','interval_seconds','decoded_frame_md5'])
             for i,(pts,checksum) in enumerate(original):
+                if cancel and cancel.is_set(): raise ProcessingCancelled()
                 writer.writerow([i,format(pts-original[0][0],'.9f'),format(pts-original[i-1][0],'.9f') if i else '',checksum])
-        result['timing_file']=csv_path.name
-        final=source.with_suffix('.mp4')
-        partial=source.with_name(source.stem+'.pending.mp4')
-        remux=subprocess.run([ffmpeg,'-hide_banner','-v','error','-i',str(source),'-map','0:v:0',
-                              '-an','-c:v','copy','-movflags','+faststart','-n',str(partial)],
-                             capture_output=True,timeout=timeout,creationflags=flags)
-        if remux.returncode: raise RuntimeError('MP4 conversion failed: '+remux.stderr.decode('utf-8','replace')[-1200:])
-        converted=decode(ffmpeg,partial,flags,timeout)
-        if len(original)!=len(converted) or any(a[1]!=b[1] for a,b in zip(original,converted)):
-            raise RuntimeError('MP4 decoded frame count or frame content differs from MKV.')
-        error=max(abs((a[0]-original[0][0])-(b[0]-converted[0][0])) for a,b in zip(original,converted))
-        if error>.0011: raise RuntimeError('MP4 relative timestamps differ by more than 1.1 ms.')
-        if final.exists(): raise RuntimeError('MP4 destination already exists; it was not overwritten.')
-        partial.rename(final)
-        result.update(mp4_status='verified',mp4_file=final.name,mp4_bytes=final.stat().st_size,
+        if cancel and cancel.is_set(): raise ProcessingCancelled()
+        if not final.exists(): partial.rename(final)
+        csv_temp.replace(csv_path)
+        result.update(timing_file=csv_path.name,mp4_status='verified',mp4_file=final.name,mp4_bytes=final.stat().st_size,
                       mp4_max_relative_timestamp_error_ms=error*1000,
-                      mp4_verification='All decoded frame hashes and counts match MKV; relative PTS within 1.1 ms.')
+                      mp4_verification='Decoded frames match MKV; relative PTS within 1.1 ms.')
+    except ProcessingCancelled:
+        raise
     except Exception as exc:
-        result['mp4_error']=str(exc)
-        result['qc']='REVIEW'
-        result['qc_reasons'].append('Post-capture validation/conversion failed. MKV retained; pending MP4 is not verified.')
+        result['mp4_error']=str(exc);result['qc']='REVIEW'
+        result['qc_reasons'].append('Background processing failed. MKV retained; retry when ready.')
+    finally:
+        # Only scratch files created by this invocation, never originals or existing MP4.
+        for path in (partial,csv_temp):
+            if path.exists():
+                try: path.unlink()
+                except OSError: pass
     return result

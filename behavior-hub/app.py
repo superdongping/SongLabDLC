@@ -30,7 +30,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 TOKEN = secrets.token_urlsafe(32)
-APP_VERSION = '1.0.1'
+APP_VERSION = '1.1.0'
 
 def now():
     return dt.datetime.now().astimezone().isoformat(timespec='milliseconds')
@@ -70,7 +70,12 @@ def numeric(v, low, high, label):
         raise ValueError(f'{label} must be between {low} and {high}.')
     return x
 
-class Recorder:
+sys.path.insert(0, str(Path(__file__).parent / 'vendor'))
+from project_store import ProjectSupport, atomic
+from background_jobs import BackgroundSupport
+from alignment import AlignmentEngine
+
+class Recorder(ProjectSupport, BackgroundSupport):
     def __init__(self, data_dir, synthetic=False):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -94,18 +99,28 @@ class Recorder:
         self.request_mono = 0
         self.last_progress = 0
         self.log_tail = []
+        self.init_projects()
+        self.alignment=AlignmentEngine()
+        self.calibration_mode=False
+        self.ffmpeg_path=ffmpeg;self.process_flags=FLAGS
         for s in self.db['sessions']:
             if s['status'] in ('starting', 'recording', 'finalizing'):
                 s['status'] = 'interrupted'
                 s['error'] = 'The service stopped before recording finished. Check the retained video files.'
                 self.save_session(s)
         self.persist()
+        self.init_background()
 
     def persist(self):
-        atomic_json(self.db_path, self.db)
+        if self.project_file:self.project_persist()
+        else:
+            atomic_json(self.db_path, self.db)
+            self.legacy_db=copy.deepcopy(self.db)
 
     def save_session(self, s):
-        atomic_json(Path(s['folder']) / 'session.json', s)
+        saved=copy.deepcopy(s)
+        if self.project_file:saved['folder']='.'
+        atomic_json(Path(s['folder']) / 'session.json', saved)
 
     def session(self, sid):
         return next(s for s in self.db['sessions'] if s['id'] == sid)
@@ -113,6 +128,8 @@ class Recorder:
     def state(self):
         with self.lock:
             d = copy.deepcopy(self.db)
+            d.update(self.project_state())
+            d.update(processing=self.queue_state(),alignment=self.alignment.state())
             d.update(active=self.active, preview=bool(self.proc and self.active == 'preview'),
                      frames=self.frames, media_seconds=self.media_seconds,
                      elapsed=round(time.monotonic() - self.started_mono, 2) if self.started_mono else 0,
@@ -121,6 +138,7 @@ class Recorder:
             return d
 
     def set_output(self, path):
+        if self.project_file:raise ValueError('Project videos are stored inside the project data folder. Create/open another project to change location.')
         p = Path(path).expanduser()
         if not p.is_absolute() or not p.is_dir():
             raise ValueError('Select an existing folder using its full absolute path.')
@@ -166,14 +184,15 @@ class Recorder:
         with self.command_lock:
             if self.active and self.active != 'preview':
                 raise ValueError('Recording is in progress. Preview already uses the same video stream.')
-            self.stop_preview()
+            self.stop_preview();self.preempt_background();self.calibration_mode=False;self.alignment.stop()
             self.launch(self.capture_settings(data), None, None)
 
     def start(self, data):
         with self.command_lock:
             if self.active and self.active != 'preview':
                 raise ValueError('A recording or finalization is already in progress.')
-            self.stop_preview()
+            self.stop_preview();self.preempt_background();self.calibration_mode=False;self.alignment.stop()
+            if not self.project_file:raise ValueError('Create or open a project before recording.')
             with self.lock:
                 c = self.capture_settings(data)
                 presets = json.loads((ROOT/'presets.json').read_text())
@@ -189,10 +208,10 @@ class Recorder:
                 if shutil.disk_usage(output).free < duration * 4_000_000 + 1024**3:
                     raise ValueError('Insufficient space for MKV, MP4 and a 1 GB reserve.')
                 prefix = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
-                ids = {s['id'] for s in self.db['sessions']}
-                sequence = 1
-                while f'{prefix}_{sequence:03d}' in ids: sequence += 1
-                sid = f'{prefix}_{sequence:03d}'
+                sequence = int(self.db.get('next_sequence',1))
+                sid = f'{prefix}_{assay}_{sequence:03d}_{uuid.uuid4().hex[:8]}'
+                self.db['next_sequence']=sequence+1
+                self.db['settings']=dict(capture=c,assay=assay,duration_seconds=duration,test=test)
                 m = {k:safe_text(data.get(k,'')) for k in ('mouse_id','sex','cage','group','operator','notes')}
                 if m['sex'] not in ('','F','M','Unknown'): raise ValueError('Invalid sex.')
                 weight = data.get('weight_g')
@@ -200,7 +219,7 @@ class Recorder:
                 folder = output / ('TEST' if test else 'EXPERIMENT') / assay / sid
                 folder.mkdir(parents=True,exist_ok=False)
                 s = dict(id=sid, app_version=APP_VERSION, mouse=m, folder=str(folder),created_at=now(),test=test,
-                         synthetic=self.synthetic, assay=assay,capture=c,recording_seconds=duration,
+                         synthetic=self.synthetic, project_id=self.db['project']['id'], assay=assay,capture=c,recording_seconds=duration,
                          preset_source=presets, status='starting',phases={},events=[],phase='recording')
                 s['phases']['recording'] = dict(requested_at=now(),target_seconds=duration,file=sid+'.mkv',status='starting')
                 self.db['sessions'].append(s)
@@ -220,7 +239,8 @@ class Recorder:
         cmd += ['-map', '0:v:0', '-an']
         if session:
             cmd += ['-t', str(duration)]
-        cmd += ['-vf', 'fps=8,scale=640:-2', '-c:v', 'mjpeg', '-q:v', '6', '-threads', '1', '-f', 'image2pipe', 'pipe:1']
+        vf = 'scale=960:-2' if self.calibration_mode and not session else 'fps=8,scale=640:-2'
+        cmd += ['-vf', vf, '-c:v', 'mjpeg', '-q:v', '6', '-threads', '1', '-f', 'image2pipe', 'pipe:1']
         with self.lock:
             self.active = session['id'] if session else 'preview'
             self.error = ''
@@ -268,7 +288,7 @@ class Recorder:
         def jpeg_reader():
             buf = b''
             while True:
-                b = p.stdout.read(65536)
+                b = p.stdout.read(65536)  # bufsize=0: unbuffered pipe reads return available bytes
                 if not b:
                     break
                 buf += b
@@ -278,6 +298,7 @@ class Recorder:
                     if start >= 0:
                         self.preview = buf[start:end]
                         self.preview_at = time.monotonic()
+                        self.alignment.offer(self.preview)
                     buf = buf[end:]
                 if len(buf) > 4_000_000:
                     buf = b''
@@ -338,16 +359,7 @@ class Recorder:
                     self.request_stop('Automatically stopped: target duration exceeded by more than 15 seconds')
             for t in readers:
                 t.join(5)
-            quality = None
-            if s:
-                with self.lock:
-                    s['status'] = 'finalizing'
-                    s['phases'][phase]['status'] = 'finalizing'
-                    self.save_session(s)
-                    self.persist()
-                # Decode/remux without holding the state lock so the UI stays responsive.
-                quality = finalize_video(ffmpeg(), Path(s['folder']) / s['phases'][phase]['file'],
-                                         s['capture']['fps'], s[phase + '_seconds'], FLAGS)
+            quality = dict(mp4_status='queued',qc='PENDING',qc_reasons=['Full timing QC will run with idle processing.'])
             with self.lock:
                 if s:
                     record = s['phases'][phase]
@@ -381,6 +393,7 @@ class Recorder:
                 self.proc = None
                 self.active = None
                 self.started_mono = None
+                self.touch()
             if s and os.name == 'nt':
                 import winsound
                 winsound.MessageBeep(winsound.MB_OK if good else winsound.MB_ICONHAND)
@@ -407,6 +420,7 @@ class Recorder:
                 ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
 
     def manage_session(self, data):
+        with self.command_lock:self.preempt_background()
         with self.lock:
             original = self.session(data['session_id'])
             if self.active == original['id'] or original['status'] not in ('completed', 'interrupted', 'failed'):
@@ -443,6 +457,30 @@ class Recorder:
             self.db['sessions'][index] = s
             self.persist()
             return s['id']
+
+    def calibration_action(self,data):
+        with self.command_lock:
+            action=data.get('action')
+            if self.active and self.active!='preview':raise ValueError('Calibration is disabled while recording.')
+            self.preempt_background()
+            if action=='start':
+                self.stop_preview();c=self.capture_settings(data);c['fps']=25
+                self.calibration_mode=True;self.alignment.begin(c);self.launch(c,None,None)
+                return None
+            if action=='stop':self.stop_preview();self.alignment.stop();self.calibration_mode=False;return None
+            if action=='freeze':return self.alignment.freeze()
+            if action=='select':profile=self.alignment.select(data)
+            elif action=='confirm':profile=self.alignment.confirm()
+            elif action=='load':
+                profile=copy.deepcopy(self.db.get('calibrations',{}).get(data.get('key')))
+                if not profile:raise ValueError('No saved calibration for this behavior.')
+                profile['verification']='Needs verification'
+                return profile
+            else:raise ValueError('Unknown calibration action.')
+            if self.project_file:
+                self.db.setdefault('calibrations',{})[data.get('key','OFT')]=profile
+                with self.lock:self.persist()
+            return profile
 
     def event(self, data):
         with self.lock:
@@ -503,6 +541,7 @@ class Handler(BaseHTTPRequestHandler):
         token=self.headers.get('X-SongScope-Token') or parse_qs(u.query).get('token',[''])[0]
         if not secrets.compare_digest(token,TOKEN): return self.reply(403,{'error':'Open the application from its local home page.'})
         try:
+            if u.path=='/api/alignment': return self.reply(200,self.server.rec.alignment.state())
             if u.path=='/api/presets': return self.reply(200,json.loads((ROOT/'presets.json').read_text()))
             if u.path=='/api/state': return self.reply(200,self.server.rec.state())
             if u.path=='/api/devices': return self.reply(200,{'devices':devices()})
@@ -522,9 +561,26 @@ class Handler(BaseHTTPRequestHandler):
             if n>100_000: raise ValueError('Request is too large.')
             data=json.loads(self.rfile.read(n) or b'{}')
             r=self.server.rec
+            r.touch()
             route=urlparse(self.path).path
             result=None
-            if route=='/api/output': result=r.set_output(data['path'])
+            if route=='/api/project': result=r.project_action(data)
+            elif route=='/api/queue': result=r.queue_action(data)
+            elif route=='/api/calibration': result=r.calibration_action(data)
+            elif route=='/api/activity': pass
+            elif route=='/api/project-folder':
+                import tkinter as tk
+                from tkinter import filedialog
+                root=tk.Tk();root.withdraw();root.attributes('-topmost',True)
+                try: result=filedialog.askdirectory(title='Choose project parent folder',parent=root)
+                finally: root.destroy()
+            elif route=='/api/project-file':
+                import tkinter as tk
+                from tkinter import filedialog
+                root=tk.Tk();root.withdraw();root.attributes('-topmost',True)
+                try: result=filedialog.askopenfilename(title='Open Behavior Hub project',filetypes=[('Project files','*.project.json')],parent=root)
+                finally: root.destroy()
+            elif route=='/api/output': result=r.set_output(data['path'])
             elif route=='/api/folder':
                 import tkinter as tk
                 from tkinter import filedialog
@@ -548,6 +604,7 @@ class Handler(BaseHTTPRequestHandler):
             elif route=='/api/shutdown':
                 if r.active and r.active!='preview': raise ValueError('Stop recording and wait for the file to be saved first.')
                 r.stop_preview()
+                r.close_services()
                 threading.Thread(target=self.server.shutdown,daemon=True).start()
             else: return self.reply(404,{'error':'Not found'})
             return self.reply(200,{'ok':True,'result':result})
@@ -648,6 +705,7 @@ def main():
             if hasattr(server,'rec'):
                 server.rec.request_stop('Service shutdown')
                 if server.rec.worker:server.rec.worker.join(12)
+                server.rec.close_services()
             server.server_close()
         data_lock.close()
     return 0
