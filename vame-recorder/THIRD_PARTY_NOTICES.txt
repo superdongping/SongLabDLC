@@ -1,0 +1,22 @@
+VAME Recorder 1.3.0 - local research tool
+
+Python 3.11.4: Python Software Foundation License and included component licenses.
+Full license text: licenses/Python-LICENSE.txt
+Source: https://www.python.org/downloads/release/python-3114/
+
+FFmpeg 7.1 binary distributed by imageio-ffmpeg 0.6.0.
+License and enabled build configuration: licenses/FFmpeg-license-and-build.txt
+FFmpeg source: https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz
+Build recipe and binary distribution: https://github.com/imageio/imageio-ffmpeg
+The included build uses GPL-enabled components including libx264.
+Retain the relevant licenses and source/build availability information with redistribution.
+
+imageio-ffmpeg 0.6.0: BSD 2-Clause License.
+Full text: licenses/imageio-ffmpeg-LICENSE.txt
+
+PyInstaller 6.22.3 builds the executable. Its bootloader exception permits
+distribution of bundled applications under the application's own terms.
+https://pyinstaller.org/en/stable/license.html
+Python's bundled Tcl/Tk runtime is included for the directory picker.
+
+Application source is included in Source/. No third-party branding or affiliation is implied.
