@@ -407,3 +407,9 @@ Run metadata retains original and prepared paths and the reader method. The six 
 
 
 Behavior Hub is a separate Windows recording application with an English UI, optional mouse metadata, per-assay duration presets, portable multi-day/multi-behavior projects, static manual camera alignment guides and reference overlays, and retained MKV plus idle-queue verified MP4. Default durations were imported from `helpers/get_default_behavior_options.m` at commit `9cfb841e38c7909da645b4c46b808fc94434951f`: OFT/NPR/Zero Maze 6 min, Y-maze 8 min, FST 5 min and TST 6 min. These are analysis-duration defaults offered as editable recording presets; the recorder does not change analysis settings or define a treatment protocol.
+
+## VAME Recorder companion
+
+[VAME Recorder 1.3.0 source and build instructions](vame-recorder/README.md) | [Validation scope](vame-recorder/VALIDATION.md)
+
+A separate Windows application for baseline/injection/post-return video logging, with per-mouse printable logs. MKV is saved first; MP4 and full timing QC use a persistent idle queue that yields to recording. Setup preview targets up to 25 fps and recording preview up to 8 fps; these targets do not certify acquisition FPS. The blank log and configured calculations reflect user-provided experimental parameters. The application does not administer treatment or run VAME/DLC analysis.

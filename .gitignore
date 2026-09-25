@@ -15,3 +15,14 @@ behavior-hub/*.zip
 behavior-hub/outputs/
 
 behavior-hub/vendor/
+
+# VAME Recorder generated files and local experiment data
+vame-recorder/__pycache__/
+vame-recorder/build/
+vame-recorder/dist/
+vame-recorder/node_modules/
+vame-recorder/ffmpeg.exe
+vame-recorder/*.zip
+vame-recorder/outputs/
+vame-recorder/validation/
+vame-recorder/registry.json
