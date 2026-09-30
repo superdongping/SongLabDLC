@@ -31,7 +31,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 TOKEN = secrets.token_urlsafe(32)
-APP_VERSION = '1.2.3'
+APP_VERSION = '1.2.4'
 
 def now():
     return dt.datetime.now().astimezone().isoformat(timespec='milliseconds')
@@ -602,6 +602,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200,{'application':'SongScope','version':APP_VERSION})
         if u.path=='/favicon.ico':
             return self.reply(200,(ROOT/'assets/behavior-hub.ico').read_bytes(),'image/x-icon')
+        if u.path=='/app-icon.png':
+            return self.reply(200,(ROOT/'assets/behavior-hub.png').read_bytes(),'image/png')
         if u.path=='/':
             html=(ROOT/'index.html').read_text(encoding='utf-8').replace('__TOKEN__',TOKEN)
             html=html.replace('__FOCUS_UI__',(ROOT/'focus_ui.js').read_text(encoding='utf-8'))

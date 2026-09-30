@@ -1,8 +1,8 @@
-# Behavior Hub 1.2.3 — Behavioral Recording Studio
+# Behavior Hub 1.2.4 — Behavioral Recording Studio
 
 Behavior Hub is an English-language, local Windows application for behavioral video capture. It is independent of VAME Recorder and does not administer treatment or launch DLC/MATLAB analysis.
 
-Download the [Windows 1.2.3 package](https://github.com/superdongping/SongLabDLC/releases/tag/behavior-hub-v1.2.3). The yellow **User guide** button in the application header opens a concise, one-page guide.
+Download the [Windows 1.2.4 package](https://github.com/superdongping/SongLabDLC/releases/tag/behavior-hub-v1.2.4). The yellow **User guide** button in the application header opens a concise, one-page guide.
 
 ## Start
 
@@ -17,7 +17,7 @@ State is in %LOCALAPPDATA%\SongScope. VAME Recorder state and existing experimen
 
 ## Camera focus
 
-Close the older version using **Exit application**, then open version 1.2.3. Keep the complete application folder together.
+Close the older version using **Exit application**, then open version 1.2.4. Keep the complete application folder together.
 
 Choose **Manual** under Focus and drag the slider until the preview looks clear. Changes apply automatically and are saved for this camera in the current project. Choose **Auto** to turn autofocus back on. Focus controls are disabled while recording.
 
@@ -85,7 +85,7 @@ Existing SongLabDLC time-based metrics assume uniform nominal/average FPS. Conta
 
 ## Source and rebuilding
 
-Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with python build_windows.py; it builds the native focus component when missing. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.2.3/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
+Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with python build_windows.py; it builds the native focus component when missing. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.2.4/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
 
 ## Upgrade from SongScope
 
@@ -101,7 +101,7 @@ python native/build_focus.py
 python app.py
 ```
 
-To create `dist/1.2.3/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
+To create `dist/1.2.4/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
 
 ```powershell
 python build_windows.py

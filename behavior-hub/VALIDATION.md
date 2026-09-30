@@ -1,3 +1,7 @@
+# Behavior Hub 1.2.4 header icon - 2026-09-30
+
+Added the existing transparent application artwork to the top-left header beside the Behavior Hub title, including a smaller layout on narrow screens. Original 1.2.3 release and PDF guide are retained. Recording and focus behavior are unchanged. Packaged EXE startup/version checks, the PNG route (byte-identical to the supplied artwork), and header DOM structure checks passed. No physical camera session was opened for this cosmetic update.
+
 # Behavior Hub 1.2.3 user guide and publication - 2026-09-30
 
 Added a yellow button with bold red User guide text in the header, immediately before the service status. It opens a compact, seven-step English guide with a Close button and native Escape support. Camera/recording behavior is unchanged from 1.2.2. The packaged EXE HTTP/DOM suite passed, including opening/closing the guide, recording, MP4/QC, exports and restart. Focus interaction tests also passed. The user accepted the update and authorized GitHub publication after adding this guide. That acceptance is not a quantitative FPS, optical-sharpness, or long-duration certification.

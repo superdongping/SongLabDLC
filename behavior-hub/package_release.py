@@ -1,6 +1,6 @@
 from pathlib import Path
 import shutil,zipfile,hashlib,json
-root=Path(__file__).parent;dest=root/'dist/1.2.3/BehaviorHub'
+root=Path(__file__).parent;dest=root/'dist/1.2.4/BehaviorHub'
 for name in ['README.md','VALIDATION.md','THIRD_PARTY_NOTICES.txt']:shutil.copy2(root/name,dest/name)
 (dest/'licenses').mkdir(exist_ok=True)
 for p in (root/'licenses').iterdir():
@@ -15,7 +15,7 @@ shutil.copytree(root/'native',src/'native',dirs_exist_ok=True)
 shutil.copytree(root/'assets',src/'assets',dirs_exist_ok=True)
 files={str(p.relative_to(dest)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in dest.rglob('*') if p.is_file() and p.name!='SHA256.json'}
 (dest/'SHA256.json').write_text(json.dumps(files,indent=2))
-target=root/'BehaviorHub_Windows_English_1.2.3.zip'
+target=root/'BehaviorHub_Windows_English_1.2.4.zip'
 with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
  for p in dest.rglob('*'):
   if p.is_file():z.write(p,Path('BehaviorHub')/p.relative_to(dest))

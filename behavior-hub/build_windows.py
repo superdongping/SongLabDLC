@@ -12,5 +12,5 @@ if os.name != 'nt':
 if not (root / 'focus_capture.exe').exists():
     subprocess.run([sys.executable, 'native/build_focus.py'], cwd=root, check=True)
 shutil.copy2(imageio_ffmpeg.get_ffmpeg_exe(), root / 'ffmpeg.exe')
-subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--distpath', 'dist/1.2.3', '--workpath', 'build/1.2.3', 'BehaviorHub.spec'], cwd=root, check=True)
+subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', '--distpath', 'dist/1.2.4', '--workpath', 'build/1.2.4', 'BehaviorHub.spec'], cwd=root, check=True)
 subprocess.run([sys.executable, 'package_release.py'], cwd=root, check=True)

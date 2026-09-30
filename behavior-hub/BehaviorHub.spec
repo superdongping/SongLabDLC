@@ -8,7 +8,7 @@ a = Analysis(
     ['app.py'],
     pathex=[str(__import__('pathlib').Path(SPECPATH)/'vendor')],
     binaries=[('ffmpeg.exe', '.'), ('focus_capture.exe', '.')],
-    datas=[('index.html', '.'), ('focus_ui.js', '.'), ('presets.json', '.'), ('assets/behavior-hub.ico', 'assets')],
+    datas=[('index.html', '.'), ('focus_ui.js', '.'), ('presets.json', '.'), ('assets/behavior-hub.ico', 'assets'), ('assets/behavior-hub.png', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

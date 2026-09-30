@@ -10,7 +10,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 def run(camera):
-    exe=Path('dist/1.2.3/BehaviorHub/BehaviorHub.exe').resolve()
+    exe=Path('dist/1.2.4/BehaviorHub/BehaviorHub.exe').resolve()
     base='http://127.0.0.1:43837'
     token=''
     def call(route,data=None):
@@ -24,7 +24,7 @@ def run(camera):
             try:
                 html=urlopen(base,timeout=.5).read().decode()
                 token=re.search("const token='([^']+)'",html).group(1)
-                assert '1.2.3' in html and 'focusMode' in html
+                assert '1.2.4' in html and 'focusMode' in html
                 return p
             except OSError:time.sleep(.1)
         p.terminate();p.wait();raise AssertionError('EXE failed to start')

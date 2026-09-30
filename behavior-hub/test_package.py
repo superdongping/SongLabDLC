@@ -1,7 +1,7 @@
 import subprocess,tempfile,time,json,re,os
 from pathlib import Path
 from urllib.request import urlopen,Request
-exe=str(Path('dist/1.2.3/BehaviorHub/BehaviorHub.exe').resolve())
+exe=str(Path('dist/1.2.4/BehaviorHub/BehaviorHub.exe').resolve())
 with tempfile.TemporaryDirectory(prefix='BehaviorHub_HTTP_') as temp:
  args=[exe,'--port','43836','--data-dir',str(Path(temp)/'state'),'--synthetic','--no-browser']
  p=subprocess.Popen(args,creationflags=subprocess.CREATE_NO_WINDOW)
