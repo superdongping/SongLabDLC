@@ -6,6 +6,7 @@ let d=dom.window.document,$=id=>d.getElementById(id);async function wait(fn){let
 try{
  await wait(()=>$('presetNote').textContent.includes('imported'));
  await wait(()=>dom.window.eval('busy===false'));
+ $('userGuideOpen').click();assert.equal($('userGuide').open,true);assert.match($('userGuide').textContent,/choose Manual and drag the slider/);$('userGuideClose').click();assert.equal($('userGuide').open,false);
  assert.equal($('size').value,'1280x720');assert.equal($('mouse_id').value,'');
  for(let [assay,min] of Object.entries({OFT:6,NPR:6,ZERO_MAZE:6,Y_MAZE:8,FST:5,TST:6})){ $('assay').value=assay;$('assay').dispatchEvent(new dom.window.Event('change'));assert.equal(Number($('duration').value),min)}
  $('newProject').click();await wait(()=>$('projectName').textContent!== 'Legacy Library');

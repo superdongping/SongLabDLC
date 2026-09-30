@@ -1,5 +1,6 @@
 """Behavior Hub: loopback-only Windows capture service. No cloud services."""
 from media_quality import finalize_video
+from focus_capture import FocusBridge, focus_request
 import csv
 import argparse
 import copy
@@ -30,7 +31,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 TOKEN = secrets.token_urlsafe(32)
-APP_VERSION = '1.1.1'
+APP_VERSION = '1.2.3'
 
 def now():
     return dt.datetime.now().astimezone().isoformat(timespec='milliseconds')
@@ -47,8 +48,24 @@ def run_ff(args, timeout=20):
                           timeout=timeout, creationflags=FLAGS)
 
 def devices():
+    return [d['name'] for d in device_details()]
+
+def device_details():
     r = run_ff(['-list_devices', 'true', '-f', 'dshow', '-i', 'dummy'])
-    return re.findall(r'"([^"\r\n]+)" \(video\)', r.stderr.decode('utf-8', 'replace'))
+    result = []
+    pending = None
+    for line in r.stderr.decode('utf-8', 'replace').splitlines():
+        name = re.search(r'"([^"\r\n]+)" \(video\)', line)
+        if name:
+            pending = name.group(1)
+        elif 'Alternative name' in line and pending:
+            match = re.search(r'Alternative name "([^"]+)"', line)
+            if match:
+                result.append({'name': pending, 'id': match.group(1)})
+            pending = None
+        elif '(audio)' in line:
+            pending = None
+    return result
 
 def atomic_json(path, data):
     tmp = path.with_suffix('.tmp')
@@ -98,6 +115,9 @@ class Recorder(ProjectSupport, BackgroundSupport):
         self.request_mono = 0
         self.last_progress = 0
         self.log_tail = []
+        self.focus_status = None
+        self.live_capture = None
+        self.focus_bridge_factory = FocusBridge
         self.init_projects()
         self.ffmpeg_path=ffmpeg;self.process_flags=FLAGS
         for s in self.db['sessions']:
@@ -131,7 +151,8 @@ class Recorder(ProjectSupport, BackgroundSupport):
                      frames=self.frames, media_seconds=self.media_seconds,
                      elapsed=round(time.monotonic() - self.started_mono, 2) if self.started_mono else 0,
                      error=self.error, preview_age=round(time.monotonic() - self.preview_at, 1) if self.preview_at else None,
-                     synthetic=self.synthetic)
+                     synthetic=self.synthetic, app_version=APP_VERSION,
+                     focus_status=copy.deepcopy(self.focus_status), live_capture=copy.deepcopy(self.live_capture))
             return d
 
     def set_output(self, path):
@@ -160,14 +181,52 @@ class Recorder(ProjectSupport, BackgroundSupport):
         mode = data.get('input_format', 'mjpeg')
         if mode not in ('mjpeg', 'yuyv422'):
             raise ValueError('Unsupported camera input format.')
-        return dict(camera=camera, size=size, fps=fps, input_format=mode)
+        camera_id = safe_text(data.get('camera_id', ''), 2000)
+        saved = self.db.get('focus_profiles', {}).get(camera_id, {})
+        focus = focus_request(data.get('focus', saved.get('focus', {'mode': 'device'})))
+        return dict(camera=camera, camera_id=camera_id, size=size, fps=fps, input_format=mode, focus=focus)
+
+    def focus_action(self, data):
+        with self.command_lock:
+            if self.active and self.active != 'preview':
+                raise ValueError('Focus controls are locked during recording.')
+            if self.synthetic:
+                raise ValueError('Simulated capture cannot verify physical camera focus.')
+            c = self.capture_settings(data)
+            action = data.get('action')
+            if action == 'save':
+                if not self.project_file:
+                    raise ValueError('Create or open a project before saving focus.')
+                if self.active != 'preview' or self.live_capture != c or not (self.focus_status or {}).get('verified'):
+                    raise ValueError('Apply and verify these settings in preview before saving.')
+                with self.lock:
+                    self.db.setdefault('focus_profiles', {})[c['camera_id']] = {
+                        'camera': c['camera'], 'focus': copy.deepcopy(c['focus']), 'saved_at': now()}
+                    self.persist()
+                return copy.deepcopy(self.focus_status)
+            if action not in ('read', 'apply'):
+                raise ValueError('Unknown focus action.')
+            self.stop_preview(); self.preempt_background()
+            self.focus_status = None
+            if action == 'read':
+                bridge = self.focus_bridge_factory(ROOT, c)
+                try:
+                    self.focus_status = copy.deepcopy(bridge.report)
+                    self.focus_status['verified'] = False
+                    return copy.deepcopy(self.focus_status)
+                finally:
+                    bridge.close()
+            if c['focus']['mode'] == 'device':
+                raise ValueError('Choose Auto focus or Manual focus before applying.')
+            self.launch(c, None, None)
+            return copy.deepcopy(self.focus_status)
 
     def input_args(self, c):
         if self.synthetic:
             return ['-re', '-f', 'lavfi', '-i', f'testsrc2=size={c["size"]}:rate={c["fps"]}']
         fmt = ['-vcodec', 'mjpeg'] if c['input_format'] == 'mjpeg' else ['-pixel_format', 'yuyv422']
         return ['-f', 'dshow', '-rtbufsize', '256M', *fmt, '-video_size', c['size'],
-                '-framerate', str(c['fps']), '-i', 'video=' + c['camera']]
+                '-framerate', str(c['fps']), '-i', 'video=' + (c.get('camera_id') or c['camera'])]
 
     def stop_preview(self):
         if self.active == 'preview':
@@ -225,7 +284,30 @@ class Recorder(ProjectSupport, BackgroundSupport):
             return sid
 
     def launch(self, c, session, phase):
-        cmd = [ffmpeg(), '-hide_banner', '-nostats', '-stats_period', '0.5', '-progress', 'pipe:2', *self.input_args(c)]
+        bridge = None
+        self.focus_status = None
+        self.live_capture = None
+        try:
+            if c.get('focus', {}).get('mode', 'device') != 'device':
+                if self.synthetic:
+                    raise ValueError('Simulated capture cannot verify physical camera focus.')
+                bridge = self.focus_bridge_factory(ROOT, c, c['focus'])
+                self.focus_status = copy.deepcopy(bridge.report)
+                args = bridge.input_args()
+            else:
+                args = self.input_args(c)
+            if session:
+                session['focus'] = copy.deepcopy(self.focus_status) or {'verified': False, 'requested': c.get('focus'), 'reason': 'Camera default; focus not controlled.'}
+                self.save_session(session)
+        except Exception as exc:
+            if bridge: bridge.close()
+            self.focus_status = {'verified': False, 'camera_id': c.get('camera_id'), 'error': str(exc)}
+            self.error = 'Recording blocked: ' + str(exc)
+            if session:
+                session.update(status='failed', error=self.error, focus=copy.deepcopy(self.focus_status))
+                self.save_session(session); self.persist()
+            raise ValueError(self.error) from exc
+        cmd = [ffmpeg(), '-hide_banner', '-nostats', '-stats_period', '0.5', '-progress', 'pipe:2', *args]
         if session:
             duration = session[phase + '_seconds']
             # Preserve capture timestamps. No silent frame duplication to manufacture constant fps.
@@ -236,7 +318,9 @@ class Recorder(ProjectSupport, BackgroundSupport):
         cmd += ['-map', '0:v:0', '-an']
         if session:
             cmd += ['-t', str(duration)]
-        vf = 'fps=8,scale=640:-2'
+        # Full source resolution while tuning focus; normal recording preview is
+        # reduced so the existing encoder workload stays essentially unchanged.
+        vf = 'fps=4' if not session else 'fps=8,scale=640:-2'
         cmd += ['-vf', vf, '-c:v', 'mjpeg', '-q:v', '6', '-threads', '1', '-f', 'image2pipe', 'pipe:1']
         with self.lock:
             self.active = session['id'] if session else 'preview'
@@ -253,6 +337,7 @@ class Recorder(ProjectSupport, BackgroundSupport):
                 self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE, creationflags=FLAGS, bufsize=0)
             except Exception as e:
+                if bridge: bridge.close()
                 self.active = None
                 self.error = str(e)
                 if session:
@@ -261,7 +346,8 @@ class Recorder(ProjectSupport, BackgroundSupport):
                     self.save_session(session)
                     self.persist()
                 raise
-            self.worker = threading.Thread(target=self.monitor, args=(self.proc, session, phase), daemon=True)
+            self.live_capture = copy.deepcopy(c)
+            self.worker = threading.Thread(target=self.monitor, args=(self.proc, session, phase, bridge), daemon=True)
             self.worker.start()
 
     def request_stop(self, reason):
@@ -281,7 +367,7 @@ class Recorder(ProjectSupport, BackgroundSupport):
                         p.kill()
                 threading.Thread(target=kill_stuck, daemon=True).start()
 
-    def monitor(self, p, s, phase):
+    def monitor(self, p, s, phase, bridge=None):
         def jpeg_reader():
             buf = b''
             while True:
@@ -355,6 +441,10 @@ class Recorder(ProjectSupport, BackgroundSupport):
                     self.request_stop('Automatically stopped: target duration exceeded by more than 15 seconds')
             for t in readers:
                 t.join(5)
+            if bridge:
+                bridge.close()
+                if s:
+                    s['focus_capture_log'] = bridge.logs[-30:]
             quality = dict(mp4_status='queued',qc='PENDING',qc_reasons=['Full timing QC will run with idle processing.'])
             with self.lock:
                 if s:
@@ -388,6 +478,7 @@ class Recorder(ProjectSupport, BackgroundSupport):
                     self.error = '\n'.join(self.log_tail[-12:])
                 self.proc = None
                 self.active = None
+                self.live_capture = None
                 self.started_mono = None
                 self.touch()
             if s and os.name == 'nt':
@@ -407,6 +498,8 @@ class Recorder(ProjectSupport, BackgroundSupport):
                 self.active = None
                 self.proc = None
         finally:
+            if bridge and not bridge.closed.is_set():
+                bridge.close()
             for pipe in (p.stdin, p.stdout, p.stderr):
                 try:
                     pipe.close()
@@ -507,15 +600,20 @@ class Handler(BaseHTTPRequestHandler):
         u=urlparse(self.path)
         if u.path=='/health':
             return self.reply(200,{'application':'SongScope','version':APP_VERSION})
+        if u.path=='/favicon.ico':
+            return self.reply(200,(ROOT/'assets/behavior-hub.ico').read_bytes(),'image/x-icon')
         if u.path=='/':
             html=(ROOT/'index.html').read_text(encoding='utf-8').replace('__TOKEN__',TOKEN)
+            html=html.replace('__FOCUS_UI__',(ROOT/'focus_ui.js').read_text(encoding='utf-8'))
             return self.reply(200,html.encode('utf-8'),'text/html; charset=utf-8')
         token=self.headers.get('X-SongScope-Token') or parse_qs(u.query).get('token',[''])[0]
         if not secrets.compare_digest(token,TOKEN): return self.reply(403,{'error':'Open the application from its local home page.'})
         try:
             if u.path=='/api/presets': return self.reply(200,json.loads((ROOT/'presets.json').read_text()))
             if u.path=='/api/state': return self.reply(200,self.server.rec.state())
-            if u.path=='/api/devices': return self.reply(200,{'devices':devices()})
+            if u.path=='/api/devices':
+                details = [{'name':'Synthetic test camera','id':'synthetic'}] if self.server.rec.synthetic else device_details()
+                return self.reply(200,{'devices':[d['name'] for d in details], 'details':details})
             if u.path=='/api/preview':
                 return self.reply(200,self.server.rec.preview,'image/jpeg') if self.server.rec.preview else self.reply(204,b'','image/jpeg')
             if u.path=='/api/export':
@@ -559,6 +657,7 @@ class Handler(BaseHTTPRequestHandler):
                 finally: root.destroy()
                 result=r.set_output(path) if path else None
             elif route=='/api/preview': r.preview_start(data)
+            elif route=='/api/focus': result=r.focus_action(data)
             elif route=='/api/stop-preview':
                 with r.command_lock: r.stop_preview()
             elif route=='/api/start': result=r.start(data)

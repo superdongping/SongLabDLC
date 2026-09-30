@@ -7,8 +7,8 @@ sys.path.insert(0,str(Path(SPECPATH)/"vendor"))
 a = Analysis(
     ['app.py'],
     pathex=[str(__import__('pathlib').Path(SPECPATH)/'vendor')],
-    binaries=[('ffmpeg.exe', '.')],
-    datas=[('index.html', '.'), ('presets.json', '.')],
+    binaries=[('ffmpeg.exe', '.'), ('focus_capture.exe', '.')],
+    datas=[('index.html', '.'), ('focus_ui.js', '.'), ('presets.json', '.'), ('assets/behavior-hub.ico', 'assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -25,6 +25,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='BehaviorHub',
+    icon=str(Path(SPECPATH)/'assets/behavior-hub.ico'),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
