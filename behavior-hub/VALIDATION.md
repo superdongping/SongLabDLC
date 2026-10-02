@@ -1,3 +1,33 @@
+# Behavior Hub 1.2.5-r4 publication - 2026-10-02
+
+The user tested the local 1.2.5-r4 build, reported it looked good, and explicitly authorized GitHub publication. The executable and application assets are unchanged from that tested build. Release preparation updates documentation and the PDF publication label only. Prior test results and quantitative camera limitations below remain applicable.
+
+# Behavior Hub 1.2.5-r4 Auto_ID labels - 2026-10-02 (local test build)
+
+Blank Mouse ID now produces Auto_ID01, Auto_ID02, etc. Existing project counters continue without resetting; old video filenames remain unchanged. Updated the naming hint, top User guide and one-page PDF to explain that Auto_ID is an automatically assigned mouse ID when the field is blank, with numbering saved per project across restarts.
+
+Five targeted output tests and packaged EXE HTTP/DOM regression passed, including automatic-ID filenames, numbering across restart, custom behavior, MP4/QC, guide wording, exports and saved-project reload. The one-page PDF was rendered and visually checked. No physical-camera validation or GitHub publication was performed.
+
+# Behavior Hub 1.2.5-r3 custom behavior and filenames - 2026-10-02 (local test build)
+
+Custom now requires a behavioral test name. New MP4 filenames always use date/time, behavior name and Mouse ID. Blank IDs use a project-persisted counter (01, 02, 03), advanced only for blank-ID recording attempts. TEST prefix and collision suffixes remain. Names freeze at recording start. Existing sessions and filenames are unchanged. Custom names appear in the library, details and CSV log, while the internal CUSTOM category stays compatible with existing project folders.
+
+22 Python tests, focus DOM tests and packaged EXE HTTP/DOM regression passed. Tests include blank custom-name rejection, custom-name sanitization, new filenames, CSV labels, shared output, persistent numbering across restart and named/unnamed recordings, project reopening with restored custom name, MP4/QC and export. In-app and one-page PDF guides updated; PDF rendered and visually checked. No physical camera was opened and no GitHub upload was performed. User acceptance is still required for actual workflow and browser layout.
+
+# Behavior Hub 1.2.5-r2 UI revision - 2026-10-02 (local test build)
+
+Moved the countdown into the recording controls row beside Stop early and save, with yellow fill and bold red text. It uses captured media time, displays Saving during finalization and Ready when idle. Moved Idle processing queue below Record library and replaced the stray question mark in the heading. View now opens a details dialog with an explicit Open video action for verified MP4s, including older session-folder outputs. Video paths come from the selected session, never a client-supplied filename. No historical files are relocated.
+
+Targeted output/playback tests passed for shared and legacy destinations, blocked unverified/missing files and invalid paths. OS player launch was mocked to avoid opening applications during tests. Focus DOM and packaged EXE HTTP/DOM regression passed, including countdown placement/colors/font weight, live remaining-time display and idle reset, section order, View dialog, playback request, MP4 verification, export and project restart. Tests use isolated synthetic video, not the physical camera. Real Windows player association and final browser layout remain for user acceptance. Read-only inspection of the user's screenshot project showed its six recordings were made with 1.2.4, explaining why those MP4s use the old per-session layout.
+
+# Behavior Hub 1.2.5 shared MP4 output - 2026-10-01 (local test build)
+
+New recordings publish verified MP4 files into the project's MP4 folder. Users choose recording ID or date/time plus Mouse ID before recording. Names freeze at recording start, TEST names carry a prefix, and collisions receive numeric suffixes. Original MKV and timing reports stay in session folders. Existing sessions keep their original paths. No migration or GitHub upload was performed.
+
+21 Python tests passed, including shared-folder output, sanitization, case-insensitive collisions, path escape rejection, fixed filenames after metadata edits, project relocation, conflict preservation, retry/restart, and verification of an already-published file. Existing capture/project/focus tests remain passing. The focus DOM suite and packaged EXE HTTP/DOM capture, MP4/QC, new filename UI, export and restart tests passed. The updated one-page PDF was rendered and visually inspected.
+
+No physical camera session was opened. This is a local test candidate pending user validation of actual workflow and output files. Earlier C920 frame-rate and optical-quality limitations remain applicable. Keep 1.2.4 separately and exit it before starting 1.2.5.
+
 # Behavior Hub 1.2.4 header icon - 2026-09-30
 
 Added the existing transparent application artwork to the top-left header beside the Behavior Hub title, including a smaller layout on narrow screens. Original 1.2.3 release and PDF guide are retained. Recording and focus behavior are unchanged. Packaged EXE startup/version checks, the PNG route (byte-identical to the supplied artwork), and header DOM structure checks passed. No physical camera session was opened for this cosmetic update.

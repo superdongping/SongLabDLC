@@ -50,6 +50,7 @@ class ProjectSupport:
 
     def project_state(self):
         return dict(project=self.db.get('project'),project_file=str(self.project_file) if self.project_file else None,
+                    mp4_folder=str(self.project_file.parent/'MP4') if self.project_file else None,
                     recent_projects=self.recent_projects,legacy_count=len(self.legacy_db['sessions']))
 
     def project_action(self,data):
@@ -117,6 +118,9 @@ class ProjectSupport:
                     ids.add(s['id']);s['folder']=str(inside(root,s['folder']))
                     for q in s['phases'].values():
                         if Path(q['file']).name!=q['file']:raise ValueError('Invalid video filename.')
+                        if q.get('mp4_relative'):
+                            from video_output import mp4_destination
+                            mp4_destination(root,q['mp4_relative'])
                         if q.get('mp4_status')=='processing':q['mp4_status']='queued'
                     if s['status'] in ('starting','recording','finalizing'):
                         s['status']='interrupted';s['error']='Recording did not finish before the service stopped.'

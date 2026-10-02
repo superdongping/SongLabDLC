@@ -24,7 +24,7 @@ class BehaviorHubTests(unittest.TestCase):
    while q['mp4_status'] in ('queued','processing') and time.monotonic()<end:time.sleep(.1)
    self.assertEqual(q['mp4_status'],'verified',q)
    self.assertEqual(q['qc'],'TIMING_CHECKS_PASSED',q)
-   self.assertTrue((Path(s['folder'])/(sid+'.mkv')).exists());self.assertTrue((Path(s['folder'])/(sid+'.mp4')).exists())
+   self.assertTrue((Path(s['folder'])/(sid+'.mkv')).exists());self.assertTrue((self.r.project_file.parent/q['mp4_relative']).exists())
    self.assertEqual(Path(s['folder']).parent.name,assay)
   self.assertEqual(len({s['id'] for s in self.r.db['sessions']}),6)
  def test_management_and_restart(self):

@@ -72,15 +72,16 @@ def decode(ffmpeg, path, flags, timeout, cancel=None):
     return rows
 
 
-def finalize_video(ffmpeg, source, fps, target, flags=0, cancel=None):
+def finalize_video(ffmpeg, source, fps, target, flags=0, cancel=None, destination=None):
     result = dict(qc='REVIEW',qc_reasons=[],mp4_status='failed',mp4_file=None)
     timeout = max(120, target*2)
-    partial=source.with_name(source.stem+'.'+uuid.uuid4().hex+'.pending.mp4')
+    final=Path(destination) if destination is not None else source.with_suffix('.mp4')
+    partial=final.with_name(final.stem+'.'+uuid.uuid4().hex+'.pending.mp4')
     csv_temp=source.with_name(source.stem+'.'+uuid.uuid4().hex+'.pending.csv')
     try:
         original=decode(ffmpeg,source,flags,timeout,cancel)
         result.update(timing_metrics([x[0] for x in original],fps,target))
-        final=source.with_suffix('.mp4')
+        final.parent.mkdir(parents=True,exist_ok=True)
         # After a crash between file publication and queue update, verify the existing copy.
         if final.exists():
             converted=decode(ffmpeg,final,flags,timeout,cancel)

@@ -1,6 +1,7 @@
 """Behavior Hub: loopback-only Windows capture service. No cloud services."""
 from media_quality import finalize_video
 from focus_capture import FocusBridge, focus_request
+from video_output import naming_mode, reserve_mp4, mp4_destination
 import csv
 import argparse
 import copy
@@ -31,7 +32,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 TOKEN = secrets.token_urlsafe(32)
-APP_VERSION = '1.2.4'
+APP_VERSION = '1.2.5-r4'
 
 def now():
     return dt.datetime.now().astimezone().isoformat(timespec='milliseconds')
@@ -255,6 +256,10 @@ class Recorder(ProjectSupport, BackgroundSupport):
                 assay = data.get('assay', 'OFT')
                 if assay not in (*presets['seconds'], 'CUSTOM'):
                     raise ValueError('Choose a supported behavior.')
+                custom_name = safe_text(data.get('custom_behavior',''),80).strip() if assay == 'CUSTOM' else ''
+                if assay == 'CUSTOM' and not custom_name.strip(' .'):
+                    raise ValueError('Enter a name for the custom behavioral test.')
+                behavior_name = custom_name if assay == 'CUSTOM' else assay
                 duration = numeric(data.get('duration_seconds', presets['seconds'].get(assay,360)),1,86400,'Duration (seconds)')
                 test = data.get('test') is True
                 if self.synthetic and not test: raise ValueError('Simulated capture requires test mode.')
@@ -267,7 +272,8 @@ class Recorder(ProjectSupport, BackgroundSupport):
                 sequence = int(self.db.get('next_sequence',1))
                 sid = f'{prefix}_{assay}_{sequence:03d}_{uuid.uuid4().hex[:8]}'
                 self.db['next_sequence']=sequence+1
-                self.db['settings']=dict(capture=c,assay=assay,duration_seconds=duration,test=test)
+                mode = 'datetime_behavior'
+                self.db['settings']=dict(capture=c,assay=assay,custom_behavior=custom_name,duration_seconds=duration,test=test,video_naming=mode)
                 m = {k:safe_text(data.get(k,'')) for k in ('mouse_id','sex','cage','group','operator','notes')}
                 if m['sex'] not in ('','F','M','Unknown'): raise ValueError('Invalid sex.')
                 weight = data.get('weight_g')
@@ -277,7 +283,15 @@ class Recorder(ProjectSupport, BackgroundSupport):
                 s = dict(id=sid, app_version=APP_VERSION, mouse=m, folder=str(folder),created_at=now(),test=test,
                          synthetic=self.synthetic, project_id=self.db['project']['id'], assay=assay,capture=c,recording_seconds=duration,
                          preset_source=presets, status='starting',phases={},events=[],phase='recording')
-                s['phases']['recording'] = dict(requested_at=now(),target_seconds=duration,file=sid+'.mkv',status='starting')
+                auto_number = int(self.db.get('next_auto_video_id',1))
+                automatic_id = f'Auto_ID{auto_number:02d}'
+                relative = reserve_mp4(self.project_file.parent,self.db['sessions'],sid,prefix,m['mouse_id'],mode,test,behavior_name,automatic_id)
+                if not m['mouse_id'].strip(' .'):
+                    self.db['next_auto_video_id'] = auto_number+1
+                s['behavior_name'] = behavior_name
+                s['custom_behavior'] = custom_name
+                s['video_naming'] = dict(mode=mode,mouse_id=m['mouse_id'],timestamp=prefix,behavior=behavior_name,automatic_id=automatic_id if not m['mouse_id'].strip(' .') else None)
+                s['phases']['recording'] = dict(requested_at=now(),target_seconds=duration,file=sid+'.mkv',status='starting',mp4_relative=relative)
                 self.db['sessions'].append(s)
                 self.save_session(s); self.persist()
             self.launch(c,s,'recording')
@@ -508,6 +522,31 @@ class Recorder(ProjectSupport, BackgroundSupport):
             if os.name == 'nt':
                 ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
 
+    def open_recording_video(self, data):
+        with self.command_lock:
+            if self.active and self.active != 'preview':
+                raise ValueError('Wait for recording to finish before opening a video.')
+            s = self.session(data['session_id'])
+            q = s.get('phases', {}).get('recording', {})
+            if q.get('mp4_status') != 'verified':
+                raise ValueError('MP4 is not ready. Close preview and process pending videos first.')
+            if q.get('mp4_relative'):
+                if not self.project_file:
+                    raise ValueError('Open the recording project first.')
+                path = mp4_destination(self.project_file.parent, q['mp4_relative'])
+            else:
+                name = q.get('mp4_file')
+                if not name or Path(name).name != name or Path(name).suffix.lower() != '.mp4':
+                    raise ValueError('Invalid MP4 filename.')
+                folder = Path(s['folder']).resolve()
+                path = (folder/name).resolve()
+                if path.parent != folder:
+                    raise ValueError('MP4 path escapes the recording folder.')
+            if not path.is_file():
+                raise ValueError('MP4 file is missing. Restore the complete project folder.')
+            os.startfile(str(path))
+            return str(path)
+
     def manage_session(self, data):
         with self.command_lock:self.preempt_background()
         with self.lock:
@@ -561,14 +600,14 @@ class Recorder(ProjectSupport, BackgroundSupport):
 
 def export_log(db):
     out = io.StringIO(newline='')
-    columns = ['record_id','assay','created_at','test','status','mouse_id','sex','cage','group','weight_g','operator','notes','duration_seconds','folder','qc','observed_fps','mp4_status']
+    columns = ['record_id','assay','behavior_name','created_at','test','status','mouse_id','sex','cage','group','weight_g','operator','notes','duration_seconds','folder','qc','observed_fps','mp4_status','mp4_location']
     writer = csv.DictWriter(out,fieldnames=columns);writer.writeheader()
     for s in db['sessions']:
         if s.get('deleted_at'):continue
         q=s['phases'].get('recording',{})
-        row=dict(record_id=s['id'],assay=s['assay'],created_at=s['created_at'],test=s['test'],status=s['status'],
+        row=dict(record_id=s['id'],assay=s['assay'],behavior_name=s.get('behavior_name',s['assay']),created_at=s['created_at'],test=s['test'],status=s['status'],
                  **s['mouse'],duration_seconds=s['recording_seconds'],folder=s['folder'],
-                 qc=q.get('qc',''),observed_fps=q.get('observed_fps',''),mp4_status=q.get('mp4_status',''))
+                 qc=q.get('qc',''),observed_fps=q.get('observed_fps',''),mp4_status=q.get('mp4_status',''),mp4_location=q.get('mp4_relative') or str(Path(s['folder'])/(q.get('mp4_file') or '')))
         # Prevent spreadsheet applications interpreting user text as formulas.
         row={k:("'"+v if isinstance(v,str) and v.startswith(('=','+','-','@')) else v) for k,v in row.items()}
         writer.writerow(row)
@@ -665,6 +704,7 @@ class Handler(BaseHTTPRequestHandler):
             elif route=='/api/start': result=r.start(data)
             elif route=='/api/event': r.event(data)
             elif route=='/api/session': result=r.manage_session(data)
+            elif route=='/api/open-video': result=r.open_recording_video(data)
             elif route=='/api/stop':
                 reason=safe_text(data.get('reason',''))
                 if not reason: raise ValueError('Enter a reason for stopping early.')

@@ -1,8 +1,20 @@
-# Behavior Hub 1.2.4 — Behavioral Recording Studio
+# Behavior Hub 1.2.5-r4 — Behavioral Recording Studio
+
+This release: a yellow timer with bold red text beside Stop early and save shows recording time remaining. Idle processing queue appears below Record library. View opens recording details; Open video launches a verified MP4 in the default Windows player. Queued or missing videos show a clear message. Extract BehaviorHub_Windows_English_1.2.5-r4.zip, exit the old service, then run the new EXE. Check the header says 1.2.5-r4.
 
 Behavior Hub is an English-language, local Windows application for behavioral video capture. It is independent of VAME Recorder and does not administer treatment or launch DLC/MATLAB analysis.
 
-Download the [Windows 1.2.4 package](https://github.com/superdongping/SongLabDLC/releases/tag/behavior-hub-v1.2.4). The yellow **User guide** button in the application header opens a concise, one-page guide.
+Download [Behavior Hub 1.2.5-r4](https://github.com/superdongping/SongLabDLC/releases/tag/behavior-hub-v1.2.5-r4). Extract the complete BehaviorHub_Windows_English_1.2.5-r4.zip. The yellow **User guide** button opens the updated guide. The package also includes Behavior_Hub_1.2.5-r4_Quick_Start.pdf.
+
+## Shared MP4 folder and filenames (1.2.5)
+
+All new recordings save their verified MP4 to **project folder / MP4 /**, across behaviors and days. TEST filenames start with `TEST_`. New MP4 names use **Date + Time + Behavioral Test Type + User ID** automatically, for example `20261002_143025_OFT_Mouse01.mp4`. Enter the ID in Mouse ID. When blank, the project assigns Auto_ID01, Auto_ID02, Auto_ID03 in order, across behaviors and days. Auto_ID means an automatically assigned mouse ID when Mouse ID is blank. Only blank-ID recordings advance this counter; it persists after restart. TEST recordings keep the TEST_ prefix. Failed starts may reserve a number, so gaps are possible.
+
+Choosing **Custom** reveals a required **Behavioral test name** field. This name appears in the MP4 filename, record library, details and exported log. The internal CUSTOM category and original session folders remain unchanged.
+
+Windows-invalid filename characters become underscores. Duplicate names get `_002`, `_003`, etc. Names are fixed at recording start. Editing mouse information later does not rename videos. The log CSV includes `mp4_location`, relative to the project for new recordings, to link videos to their records and behaviors.
+
+Original MKV files, timing CSVs and session metadata remain in the individual recording folders. Older recordings and previously queued sessions retain their original locations. No historical videos are automatically moved. Copy the **whole project folder**, including MP4 and data, to move or back up your work. Before DLC analysis, select one behavior and exclude TEST videos. Save each matching DLC CSV beside its MP4.
 
 ## Start
 
@@ -17,7 +29,7 @@ State is in %LOCALAPPDATA%\SongScope. VAME Recorder state and existing experimen
 
 ## Camera focus
 
-Close the older version using **Exit application**, then open version 1.2.4. Keep the complete application folder together.
+Close the older version using **Exit application**, then open version 1.2.5. Keep the complete application folder together.
 
 Choose **Manual** under Focus and drag the slider until the preview looks clear. Changes apply automatically and are saved for this camera in the current project. Choose **Auto** to turn autofocus back on. Focus controls are disabled while recording.
 
@@ -47,7 +59,7 @@ Download log (CSV) opens in Excel; it includes recording and optional mouse info
 Output: project folder / data / TEST or EXPERIMENT / behavior / recording_ID /
 
 - recording_ID.mkv: original H.264 capture with acquisition timestamps.
-- recording_ID.mp4: stream-copy MP4, published only after decoded frame hashes/counts and relative timestamps match the original (1.1 ms tolerance).
+- MP4: new recordings use the shared project MP4 folder and chosen filename; older recordings keep recording_ID.mp4 in the session folder. MP4 is published only after decoded frame hashes/counts and relative timestamps match the original (1.1 ms tolerance).
 - recording_ID_frame_timing.csv: zero-based frame index, relative timestamp, interval and decoded-frame MD5.
 - session.json: full session metadata and quality report.
 - recording_capture.log: FFmpeg/camera diagnostics.
@@ -85,7 +97,7 @@ Existing SongLabDLC time-based metrics assume uniform nominal/average FPS. Conta
 
 ## Source and rebuilding
 
-Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with python build_windows.py; it builds the native focus component when missing. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.2.4/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
+Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with python build_windows.py; it builds the native focus component when missing. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.2.5-r4/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
 
 ## Upgrade from SongScope
 
@@ -101,7 +113,7 @@ python native/build_focus.py
 python app.py
 ```
 
-To create `dist/1.2.4/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
+To create `dist/1.2.5-r4/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
 
 ```powershell
 python build_windows.py
@@ -110,7 +122,7 @@ python build_windows.py
 The build script copies the FFmpeg executable supplied by the pinned imageio-ffmpeg package, runs PyInstaller with BehaviorHub.spec, and packages the executable, dependencies, documentation, licenses and source. Run commands from this directory. No live experiment or camera is needed for the automated tests:
 
 ```powershell
-python -m unittest test_behaviorhub test_projects test_focus -v
+python -m unittest test_behaviorhub test_projects test_focus test_video_output -v
 npm ci --ignore-scripts
 node test_focus_ui.mjs
 python test_package.py

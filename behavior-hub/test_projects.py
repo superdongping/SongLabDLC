@@ -34,7 +34,7 @@ class ProjectTests(unittest.TestCase):
   self.assertFalse(list(old.parent.rglob('*.mp4')))
  def test_queue_preempted_before_recording(self):
   sid=self.record();entered=threading.Event()
-  def slow(*args):
+  def slow(*args,**kwargs):
    cancel=args[-1];entered.set()
    while not cancel.wait(.02):pass
    raise ProcessingCancelled()

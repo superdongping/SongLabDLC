@@ -1,7 +1,7 @@
 import subprocess,tempfile,time,json,re,os
 from pathlib import Path
 from urllib.request import urlopen,Request
-exe=str(Path('dist/1.2.4/BehaviorHub/BehaviorHub.exe').resolve())
+exe=str(Path('dist/1.2.5-r4/BehaviorHub/BehaviorHub.exe').resolve())
 with tempfile.TemporaryDirectory(prefix='BehaviorHub_HTTP_') as temp:
  args=[exe,'--port','43836','--data-dir',str(Path(temp)/'state'),'--synthetic','--no-browser']
  p=subprocess.Popen(args,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -35,6 +35,13 @@ with tempfile.TemporaryDirectory(prefix='BehaviorHub_HTTP_') as temp:
   urlopen(Request('http://127.0.0.1:43836/api/project',data=json.dumps({'action':'open','path':project_file}).encode(),headers={'X-SongScope-Token':token})).read()
   with urlopen(Request('http://127.0.0.1:43836/api/state',headers={'X-SongScope-Token':token})) as r:state=json.load(r)
   assert state['sessions'][0]['status']=='completed';assert state['sessions'][0]['mouse']['mouse_id']=='OptionalMouse'
+  assert state['settings']['video_naming']=='datetime_behavior'
+  assert state['settings']['custom_behavior']=='Social interaction'
+  assert state['sessions'][0]['behavior_name']=='Social interaction'
+  q=state['sessions'][0]['phases']['recording']
+  assert q['mp4_relative'].endswith('_Mouse_UI.mp4')
+  assert (Path(project_file).parent/q['mp4_relative']).is_file()
+  assert not list(Path(state['sessions'][0]['folder']).glob('*.mp4'))
   print('PACKAGED_RESTART_AND_EXPORT_OK')
  finally:
   try:

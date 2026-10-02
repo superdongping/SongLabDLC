@@ -1,4 +1,4 @@
-Behavior Hub 1.2.4 - local research tool
+Behavior Hub 1.2.5 - local research tool
 
 Python 3.11.4: Python Software Foundation License and included component licenses.
 Full license text: licenses/Python-LICENSE.txt

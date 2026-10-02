@@ -3,6 +3,7 @@ import threading
 import time
 from pathlib import Path
 from media_quality import finalize_video, ProcessingCancelled
+from video_output import mp4_destination
 
 class BackgroundSupport:
     def init_background(self):
@@ -72,7 +73,8 @@ class BackgroundSupport:
         try:
             q=s['phases']['recording'];source=Path(s['folder'])/q['file']
             if not source.is_file():raise ValueError('Original MKV is missing. Restore the project data folder, then retry.')
-            result=finalize_video(self.ffmpeg_path(),source,s['capture']['fps'],s['recording_seconds'],self.process_flags,self.processing_cancel)
+            destination = mp4_destination(self.project_file.parent,q['mp4_relative']) if q.get('mp4_relative') else None
+            result=finalize_video(self.ffmpeg_path(),source,s['capture']['fps'],s['recording_seconds'],self.process_flags,self.processing_cancel,destination=destination)
             with self.lock:
                 q.update(result)
                 if s['status']!='completed':q['qc']='REVIEW'
