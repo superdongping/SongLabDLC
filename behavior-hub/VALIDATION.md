@@ -1,3 +1,21 @@
+# Behavior Hub 1.2.6-r2 publication - 2026-10-03
+
+The user tested the local build, reported it working well and explicitly authorized GitHub publication. The tested EXE and runtime are unchanged; release preparation updates documentation and packaging only. Prior test results and their limitations remain below. User acceptance is not a quantitative latency, frame-rate or optical-sharpness certification.
+
+# Local 1.2.6-r2 smooth framing update (2026-10-03)
+
+- Zoom/pan/flip-only updates retain the same live camera/FFmpeg process and focus connection. Browser CSS applies the even-pixel crop and flips immediately, before the debounced persistence request. Full-field JPEGs continue during both setup and recording; the recorded MKV still uses the FFmpeg crop/scale/flip filter and MP4 is verified against it. Setup JPEG rate increased from 4 to 8 fps; recording preview remains 8 fps at reduced resolution.
+- `python -m unittest test_video_transform test_behaviorhub test_projects test_focus test_video_output -v`: all 26 cases passed. New coverage keeps the same process/thread and nonempty advancing preview through 30 updates with no project; invalid transforms leave the process intact and a resolution change still restarts it. Browser crop and flip coordinates match encoder geometry for 80 combinations including fractional zoom and edge crops. Real FFmpeg quadrant recordings validate the saved transform, output size, MP4 verification and restored project settings.
+- `node test_focus_ui.mjs`: passed, including focus failure handling and recording locks.
+- Isolated source service tested in the in-app browser with a simulated camera: zoom 4x, pan right/down, horizontal flip and Reset; decoded 1280-pixel preview stayed visible with the expected CSS transform. No user's project or real camera was opened. This is not a quantitative real-webcam latency or frame-rate certification.
+- Updated one-page PDF rendered and visually checked. Packaged EXE HTTP/DOM regression passed: immediate CSS update before debounce, reference transform parity, Reset/latest slider value/pan direction, recording locks, timed recording, MP4/QC, Auto_ID guide, export, project settings and restart. The first new DOM assertion rounded 1.300813 to 1.301 incorrectly; corrected its expected value to the exact source/crop ratio and reran successfully. Final ZIP inventory/hashes are verified separately at packaging.
+
+# Behavior Hub 1.2.6 zoom and flip - 2026-10-02 (local test build)
+
+Added digital zoom (1-4x), pan, horizontal/vertical flips and Reset. The same validated FFmpeg framing filter applies to both preview and the recorded MKV, preserving selected output dimensions; verified MP4 remains a stream copy of that transformed MKV. No uncropped copy is retained. Settings save with the project and session. UI changes debounce, clear references and restart an open preview; recording locks the controls. Pan directions account for flips. Changing camera/resolution resets UI framing.
+
+The 24-test Python suite passed after updating a focus-test fixture to include the new default transform fields (the initial old fixture failed its strict live-settings comparison). Real FFmpeg tests use a static four-color source to verify preview/recording orientation for each flip combination and zoom/pan, output dimensions, MP4 frame/timestamp equivalence, invalid settings and restart persistence. Focus DOM and packaged EXE HTTP/DOM regression passed, including Reset, coalesced zoom updates, flipped pan direction, recording locks, transformed capture, MP4/QC, saved settings, export and reopen. PDF guide rendered and visually inspected. No physical camera was opened. Real-camera throughput, experimental framing and browser appearance remain for user acceptance. No GitHub upload is authorized for this build.
+
 # Behavior Hub 1.2.5-r4 publication - 2026-10-02
 
 The user tested the local 1.2.5-r4 build, reported it looked good, and explicitly authorized GitHub publication. The executable and application assets are unchanged from that tested build. Release preparation updates documentation and the PDF publication label only. Prior test results and quantitative camera limitations below remain applicable.

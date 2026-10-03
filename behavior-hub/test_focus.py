@@ -25,7 +25,7 @@ class FocusTests(unittest.TestCase):
         self.r = Recorder(self.root/'state', synthetic=True)
         self.r.project_action(dict(action='new',name='Focus test',folder=str(self.root)))
         self.c = dict(camera='C920',camera_id='@device_test',size='160x120',fps=25,
-                      input_format='mjpeg',focus={'mode':'manual','value':40})
+                      input_format='mjpeg',focus={'mode':'manual','value':40},transform={'zoom':1.,'pan_x':0.,'pan_y':0.,'flip_h':False,'flip_v':False})
 
     def tearDown(self):
         self.r.request_stop('test cleanup')

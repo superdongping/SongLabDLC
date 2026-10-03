@@ -1,7 +1,7 @@
 import subprocess,tempfile,time,json,re,os
 from pathlib import Path
 from urllib.request import urlopen,Request
-exe=str(Path('dist/1.2.5-r4/BehaviorHub/BehaviorHub.exe').resolve())
+exe=str(Path('dist/1.2.6-r2/BehaviorHub/BehaviorHub.exe').resolve())
 with tempfile.TemporaryDirectory(prefix='BehaviorHub_HTTP_') as temp:
  args=[exe,'--port','43836','--data-dir',str(Path(temp)/'state'),'--synthetic','--no-browser']
  p=subprocess.Popen(args,creationflags=subprocess.CREATE_NO_WINDOW)
@@ -36,6 +36,8 @@ with tempfile.TemporaryDirectory(prefix='BehaviorHub_HTTP_') as temp:
   with urlopen(Request('http://127.0.0.1:43836/api/state',headers={'X-SongScope-Token':token})) as r:state=json.load(r)
   assert state['sessions'][0]['status']=='completed';assert state['sessions'][0]['mouse']['mouse_id']=='OptionalMouse'
   assert state['settings']['video_naming']=='datetime_behavior'
+  assert state['settings']['capture']['transform']['zoom']==2
+  assert state['settings']['capture']['transform']['flip_h'] is True
   assert state['settings']['custom_behavior']=='Social interaction'
   assert state['sessions'][0]['behavior_name']=='Social interaction'
   q=state['sessions'][0]['phases']['recording']

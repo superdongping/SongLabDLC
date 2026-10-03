@@ -1,10 +1,16 @@
-# Behavior Hub 1.2.5-r4 — Behavioral Recording Studio
+# Behavior Hub 1.2.6-r2 — Behavioral Recording Studio
 
-This release: a yellow timer with bold red text beside Stop early and save shows recording time remaining. Idle processing queue appears below Record library. View opens recording details; Open video launches a verified MP4 in the default Windows player. Queued or missing videos show a clear message. Extract BehaviorHub_Windows_English_1.2.5-r4.zip, exit the old service, then run the new EXE. Check the header says 1.2.5-r4.
+This release: zoom, pan and flip update immediately without reopening the preview camera. Setup preview now runs at up to 8 fps. Saved MKV/MP4 use the same framing as the preview. Extract BehaviorHub_Windows_English_1.2.6-r2.zip, exit the old service, then run the new EXE. Check the header says 1.2.6-r2.
 
 Behavior Hub is an English-language, local Windows application for behavioral video capture. It is independent of VAME Recorder and does not administer treatment or launch DLC/MATLAB analysis.
 
-Download [Behavior Hub 1.2.5-r4](https://github.com/superdongping/SongLabDLC/releases/tag/behavior-hub-v1.2.5-r4). Extract the complete BehaviorHub_Windows_English_1.2.5-r4.zip. The yellow **User guide** button opens the updated guide. The package also includes Behavior_Hub_1.2.5-r4_Quick_Start.pdf.
+Version 1.2.6-r2 was accepted in local user testing and approved for publication. [Download the Windows package and PDF](https://github.com/superdongping/SongLabDLC/releases/tag/behavior-hub-v1.2.6-r2). Extract BehaviorHub_Windows_English_1.2.6-r2.zip. The yellow **User guide** button opens the updated guide. The package also includes Behavior_Hub_1.2.6-r2_Quick_Start.pdf.
+
+## Zoom, pan and flip (1.2.6-r2)
+
+Open **Zoom and flip** below the preview. Use the 1-4x digital zoom slider, Left/Right/Up/Down to move the crop, and horizontal/vertical flip checkboxes. Pan directions follow the displayed orientation even when flipped. Reset restores 1x with no flips. At 1x the full camera view is visible and pan is disabled. Changes appear immediately in the open preview without restarting the camera and save with the project. Changing camera or resolution resets the controls; recheck framing.
+
+The same crop and flips apply to **both preview and saved MKV/MP4**, with the selected output dimensions retained. Digital zoom crops and enlarges pixels, so it does not add optical detail or widen the original view. No separate uncropped recording is retained. Settings are recorded in each session. Controls lock during recording. Transform changes clear alignment references; capture a new reference after adjusting. Check actual frame timing and sharpness on the experimental computer before use.
 
 ## Shared MP4 folder and filenames (1.2.5)
 
@@ -97,7 +103,7 @@ Existing SongLabDLC time-based metrics assume uniform nominal/average FPS. Conta
 
 ## Source and rebuilding
 
-Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with python build_windows.py; it builds the native focus component when missing. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.2.5-r4/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
+Source/ contains the Python service, page, preset source and tests. Python 3.11; imageio-ffmpeg 0.6.0; PyInstaller 6.22.3. Put ffmpeg.exe beside app.py (or install imageio-ffmpeg) for source use. Build with python build_windows.py; it builds the native focus component when missing. For DOM tests, npm ci installs the pinned jsdom dependency. The test_package.py script expects dist/1.2.6-r2/BehaviorHub/BehaviorHub.exe. UI tests emulate a browser and do not replace a real-browser acceptance check.
 
 ## Upgrade from SongScope
 
@@ -113,7 +119,7 @@ python native/build_focus.py
 python app.py
 ```
 
-To create `dist/1.2.5-r4/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
+To create `dist/1.2.6-r2/BehaviorHub/BehaviorHub.exe` and the shareable ZIP:
 
 ```powershell
 python build_windows.py
@@ -122,10 +128,12 @@ python build_windows.py
 The build script copies the FFmpeg executable supplied by the pinned imageio-ffmpeg package, runs PyInstaller with BehaviorHub.spec, and packages the executable, dependencies, documentation, licenses and source. Run commands from this directory. No live experiment or camera is needed for the automated tests:
 
 ```powershell
-python -m unittest test_behaviorhub test_projects test_focus test_video_output -v
+python -m unittest test_behaviorhub test_projects test_focus test_video_output test_video_transform -v
 npm ci --ignore-scripts
 node test_focus_ui.mjs
 python test_package.py
 ```
 
 The packaged test uses a generated video source and isolated temporary records. Testing does not establish hardware capture quality; see VALIDATION.md. Runtime needs no MATLAB or DLC installation. Those remain separate analysis steps.
+
+The pixel-based transform tests in test_video_transform.py additionally require Pillow in the test environment.

@@ -2,6 +2,7 @@
 from media_quality import finalize_video
 from focus_capture import FocusBridge, focus_request
 from video_output import naming_mode, reserve_mp4, mp4_destination
+from video_transform import transform_settings, framing_filter
 import csv
 import argparse
 import copy
@@ -32,7 +33,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 TOKEN = secrets.token_urlsafe(32)
-APP_VERSION = '1.2.5-r4'
+APP_VERSION = '1.2.6-r2'
 
 def now():
     return dt.datetime.now().astimezone().isoformat(timespec='milliseconds')
@@ -185,7 +186,8 @@ class Recorder(ProjectSupport, BackgroundSupport):
         camera_id = safe_text(data.get('camera_id', ''), 2000)
         saved = self.db.get('focus_profiles', {}).get(camera_id, {})
         focus = focus_request(data.get('focus', saved.get('focus', {'mode': 'device'})))
-        return dict(camera=camera, camera_id=camera_id, size=size, fps=fps, input_format=mode, focus=focus)
+        return dict(camera=camera, camera_id=camera_id, size=size, fps=fps, input_format=mode, focus=focus,
+                    transform=transform_settings(data.get('transform')))
 
     def focus_action(self, data):
         with self.command_lock:
@@ -241,8 +243,18 @@ class Recorder(ProjectSupport, BackgroundSupport):
         with self.command_lock:
             if self.active and self.active != 'preview':
                 raise ValueError('Recording is in progress. Preview already uses the same video stream.')
+            c = self.capture_settings(data)
+            # Preview JPEGs stay uncropped. The browser adjusts framing immediately;
+            # changing only framing must not reopen the camera or its focus bridge.
+            with self.lock:
+                if (self.active == 'preview' and self.proc and self.proc.poll() is None
+                        and self.live_capture
+                        and {k:v for k,v in self.live_capture.items() if k != 'transform'}
+                            == {k:v for k,v in c.items() if k != 'transform'}):
+                    self.live_capture = copy.deepcopy(c)
+                    return
             self.stop_preview();self.preempt_background()
-            self.launch(self.capture_settings(data), None, None)
+            self.launch(c, None, None)
 
     def start(self, data):
         with self.command_lock:
@@ -322,10 +334,11 @@ class Recorder(ProjectSupport, BackgroundSupport):
                 self.save_session(session); self.persist()
             raise ValueError(self.error) from exc
         cmd = [ffmpeg(), '-hide_banner', '-nostats', '-stats_period', '0.5', '-progress', 'pipe:2', *args]
+        framing = framing_filter(c['size'], c.get('transform'))
         if session:
             duration = session[phase + '_seconds']
             # Preserve capture timestamps. No silent frame duplication to manufacture constant fps.
-            cmd += ['-map', '0:v:0', '-an', '-t', str(duration), '-c:v', 'libx264', '-preset', 'veryfast',
+            cmd += ['-map', '0:v:0', '-an', '-t', str(duration), '-vf', framing, '-c:v', 'libx264', '-preset', 'veryfast',
                     '-crf', '18', '-maxrate', '16M', '-bufsize', '32M', '-pix_fmt', 'yuv420p',
                     '-fps_mode', 'passthrough', '-g', str(round(c['fps'] * 2)),
                     '-cluster_time_limit', '1000', '-flush_packets', '1', '-n', str(Path(session['folder']) / session['phases'][phase]['file'])]
@@ -334,7 +347,10 @@ class Recorder(ProjectSupport, BackgroundSupport):
             cmd += ['-t', str(duration)]
         # Full source resolution while tuning focus; normal recording preview is
         # reduced so the existing encoder workload stays essentially unchanged.
-        vf = 'fps=4' if not session else 'fps=8,scale=640:-2'
+        # Browser framing uses the same even-pixel crop geometry as the saved video.
+        # Always send the full field, including during recording, to avoid double
+        # cropping and allow instant adjustment without camera restarts.
+        vf = 'fps=8' if not session else 'fps=8,scale=640:-2'
         cmd += ['-vf', vf, '-c:v', 'mjpeg', '-q:v', '6', '-threads', '1', '-f', 'image2pipe', 'pipe:1']
         with self.lock:
             self.active = session['id'] if session else 'preview'

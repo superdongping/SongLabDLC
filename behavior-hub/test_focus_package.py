@@ -10,7 +10,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 def run(camera):
-    exe=Path('dist/1.2.5-r4/BehaviorHub/BehaviorHub.exe').resolve()
+    exe=Path('dist/1.2.6-r2/BehaviorHub/BehaviorHub.exe').resolve()
     base='http://127.0.0.1:43837'
     token=''
     def call(route,data=None):
